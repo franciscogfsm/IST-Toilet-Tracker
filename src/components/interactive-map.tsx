@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import { Icon as LeafletIcon, LatLng } from "leaflet";
-import { MapPin, Star } from "lucide-react";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { Icon as LeafletIcon } from "leaflet";
+import { Star } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import "leaflet/dist/leaflet.css";
