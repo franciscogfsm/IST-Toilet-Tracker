@@ -123,34 +123,53 @@ export function InteractiveMap({ onBathroomSelect }: InteractiveMapProps) {
             height: "100%",
           }}
         >
-          {/* Background Campus Area */}
+          {/* Background Campus Area - Exact IST Alameda Layout */}
           <div className="w-full h-full relative bg-gradient-to-br from-green-100 via-blue-50 to-green-100">
-            {/* Campus outline and main paths */}
-            <div className="absolute inset-0 border-8 border-gray-300 rounded-3xl bg-green-50/30"></div>
+            {/* IST Logo */}
+            <div className="absolute top-4 left-4 w-20 h-20 bg-white rounded-full border-4 border-primary shadow-xl flex items-center justify-center z-10">
+              <img
+                src="/Imagem2.png"
+                alt="IST"
+                className="w-16 h-16 rounded-full"
+              />
+            </div>
 
-            {/* Main campus roads based on real layout */}
-            <div className="absolute bottom-0 left-1/2 w-12 h-24 bg-gray-300 transform -translate-x-1/2 rounded-t-lg"></div>
-            <div className="absolute top-1/3 left-0 w-full h-3 bg-gray-200 opacity-60"></div>
-            <div className="absolute top-2/3 left-0 w-full h-2 bg-gray-200 opacity-60"></div>
-            <div className="absolute top-0 left-1/4 w-2 h-full bg-gray-200 opacity-60"></div>
-            <div className="absolute top-0 right-1/4 w-2 h-full bg-gray-200 opacity-60"></div>
+            {/* Buildings positioned exactly like the real IST map */}
 
-            {/* IST Buildings based on real campus map */}
+            {/* TOP ROW */}
 
-            {/* 01 - Pavilhão Central */}
-            <div className="absolute top-[45%] left-[48%] w-24 h-18 bg-blue-300 rounded-lg border-2 border-blue-400 shadow-xl transform -translate-x-1/2 -translate-y-1/2">
-              <div className="p-1 text-[10px] text-blue-800 text-center font-bold">
-                01
+            {/* Anfiteatro Abreu Faro (very top center) */}
+            <div className="absolute top-[5%] left-[45%] w-24 h-8 bg-gray-200 rounded border-2 border-gray-300 shadow-lg">
+              <div className="p-0.5 text-[8px] text-gray-800 text-center font-bold">
+                ANFITEATRO
                 <br />
-                PAVILHÃO
-                <br />
-                CENTRAL
+                ABREU FARO
               </div>
             </div>
 
-            {/* 02 - Pavilhão de Civil */}
-            <div className="absolute top-[25%] right-[20%] w-28 h-22 bg-cyan-300 rounded-lg border-2 border-cyan-400 shadow-xl">
-              <div className="p-1 text-[10px] text-cyan-800 text-center font-bold">
+            {/* 25 - Pavilhão de Física (top-left) */}
+            <div className="absolute top-[12%] left-[8%] w-20 h-16 bg-cyan-200 rounded border-2 border-cyan-300 shadow-lg">
+              <div className="p-1 text-[9px] text-cyan-800 text-center font-bold">
+                25
+                <br />
+                FÍSICA
+              </div>
+            </div>
+
+            {/* 26 - Complexo Interdisciplinar (top-center-left) */}
+            <div className="absolute top-[18%] left-[30%] w-24 h-18 bg-purple-200 rounded border-2 border-purple-300 shadow-lg">
+              <div className="p-1 text-[8px] text-purple-800 text-center font-bold">
+                26
+                <br />
+                COMPLEXO
+                <br />
+                INTERDISCIPLINAR
+              </div>
+            </div>
+
+            {/* 02 - Pavilhão de Civil (top-right, large) */}
+            <div className="absolute top-[12%] right-[12%] w-28 h-22 bg-blue-200 rounded border-2 border-blue-300 shadow-lg">
+              <div className="p-1 text-[9px] text-blue-800 text-center font-bold">
                 02
                 <br />
                 PAVILHÃO
@@ -159,8 +178,19 @@ export function InteractiveMap({ onBathroomSelect }: InteractiveMapProps) {
               </div>
             </div>
 
-            {/* 05 - Torre Norte */}
-            <div className="absolute top-[15%] left-[48%] w-20 h-32 bg-blue-400 rounded-lg border-2 border-blue-500 shadow-xl transform -translate-x-1/2">
+            {/* SECOND ROW */}
+
+            {/* 24 - Pavilhão de Matemática (left) */}
+            <div className="absolute top-[30%] left-[2%] w-18 h-20 bg-orange-200 rounded border-2 border-orange-300 shadow-lg">
+              <div className="p-1 text-[8px] text-orange-800 text-center font-bold">
+                24
+                <br />
+                MATEMÁTICA
+              </div>
+            </div>
+
+            {/* 05 - Torre Norte (center, tall blue building) */}
+            <div className="absolute top-[25%] left-[45%] w-18 h-28 bg-blue-400 rounded border-2 border-blue-500 shadow-xl">
               <div className="p-1 text-[9px] text-white text-center font-bold">
                 05
                 <br />
@@ -170,9 +200,9 @@ export function InteractiveMap({ onBathroomSelect }: InteractiveMapProps) {
               </div>
             </div>
 
-            {/* 09 - Pavilhão de Informática I (DEI) */}
-            <div className="absolute top-[35%] right-[12%] w-26 h-20 bg-purple-300 rounded-lg border-2 border-purple-400 shadow-xl">
-              <div className="p-1 text-[9px] text-purple-800 text-center font-bold">
+            {/* 09 - Pavilhão de Informática I / DEI (right side) */}
+            <div className="absolute top-[38%] right-[5%] w-22 h-18 bg-purple-300 rounded border-2 border-purple-400 shadow-xl">
+              <div className="p-1 text-[8px] text-purple-800 text-center font-bold">
                 09
                 <br />
                 INFORMÁTICA I<br />
@@ -180,18 +210,63 @@ export function InteractiveMap({ onBathroomSelect }: InteractiveMapProps) {
               </div>
             </div>
 
-            {/* 14 - Pavilhão da Associação de Estudantes */}
-            <div className="absolute bottom-[25%] left-[12%] w-20 h-18 bg-red-300 rounded-lg border-2 border-red-400 shadow-xl">
-              <div className="p-1 text-[9px] text-red-800 text-center font-bold">
-                14
+            {/* 03 - Pavilhão do Jardim Norte (right edge) */}
+            <div className="absolute top-[42%] right-[28%] w-16 h-14 bg-teal-200 rounded border-2 border-teal-300 shadow-lg">
+              <div className="p-0.5 text-[7px] text-teal-800 text-center font-bold">
+                03
                 <br />
-                AEIST
+                JARDIM
+                <br />
+                NORTE
               </div>
             </div>
 
-            {/* 20 - Torre Sul */}
-            <div className="absolute bottom-[20%] left-[48%] w-20 h-28 bg-blue-400 rounded-lg border-2 border-blue-500 shadow-xl transform -translate-x-1/2">
-              <div className="p-1 text-[9px] text-white text-center font-bold">
+            {/* CENTRAL ROW */}
+
+            {/* 23 - Infantário (left-center) */}
+            <div className="absolute top-[42%] left-[20%] w-16 h-14 bg-pink-200 rounded border-2 border-pink-300 shadow-lg">
+              <div className="p-0.5 text-[7px] text-pink-800 text-center font-bold">
+                23
+                <br />
+                INFANTÁRIO
+              </div>
+            </div>
+
+            {/* 22 - Pavilhão do Jardim Sul (left) */}
+            <div className="absolute top-[48%] left-[5%] w-18 h-16 bg-green-200 rounded border-2 border-green-300 shadow-lg">
+              <div className="p-0.5 text-[7px] text-green-800 text-center font-bold">
+                22
+                <br />
+                JARDIM SUL
+              </div>
+            </div>
+
+            {/* 01 - Pavilhão Central (center, main building) */}
+            <div className="absolute top-[48%] left-[40%] w-26 h-22 bg-blue-300 rounded border-3 border-blue-400 shadow-xl">
+              <div className="p-1 text-[10px] text-blue-800 text-center font-bold">
+                01
+                <br />
+                PAVILHÃO
+                <br />
+                CENTRAL
+              </div>
+            </div>
+
+            {/* LOWER SECTION */}
+
+            {/* Row with multiple buildings */}
+            {/* 19 - Pavilhão de Minas (left) */}
+            <div className="absolute top-[65%] left-[8%] w-16 h-14 bg-amber-200 rounded border-2 border-amber-300 shadow-lg">
+              <div className="p-0.5 text-[7px] text-amber-800 text-center font-bold">
+                19
+                <br />
+                MINAS
+              </div>
+            </div>
+
+            {/* 20 - Torre Sul (center-left, tall blue) */}
+            <div className="absolute top-[62%] left-[25%] w-18 h-24 bg-blue-400 rounded border-2 border-blue-500 shadow-xl">
+              <div className="p-1 text-[8px] text-white text-center font-bold">
                 20
                 <br />
                 TORRE
@@ -200,34 +275,90 @@ export function InteractiveMap({ onBathroomSelect }: InteractiveMapProps) {
               </div>
             </div>
 
-            {/* Biblioteca Central */}
-            <div className="absolute top-[65%] left-[25%] w-24 h-18 bg-green-300 rounded-lg border-2 border-green-400 shadow-xl">
-              <div className="p-1 text-[9px] text-green-800 text-center font-bold">
+            {/* 21 - Pavilhão de Química (center) */}
+            <div className="absolute top-[65%] left-[45%] w-18 h-16 bg-yellow-200 rounded border-2 border-yellow-300 shadow-lg">
+              <div className="p-0.5 text-[7px] text-yellow-800 text-center font-bold">
+                21
+                <br />
+                QUÍMICA
+              </div>
+            </div>
+
+            {/* 14 - AEIST (center-right) */}
+            <div className="absolute top-[68%] right-[18%] w-18 h-14 bg-red-300 rounded border-2 border-red-400 shadow-lg">
+              <div className="p-0.5 text-[7px] text-red-800 text-center font-bold">
+                14
+                <br />
+                AEIST
+              </div>
+            </div>
+
+            {/* 13 - Cantina (right) */}
+            <div className="absolute top-[65%] right-[5%] w-16 h-14 bg-orange-300 rounded border-2 border-orange-400 shadow-lg">
+              <div className="p-0.5 text-[7px] text-orange-800 text-center font-bold">
+                13
+                <br />
+                CANTINA
+              </div>
+            </div>
+
+            {/* BOTTOM ROW */}
+
+            {/* 17 - Pavilhão de Ação Social (bottom-left) */}
+            <div className="absolute bottom-[12%] left-[5%] w-14 h-12 bg-rose-200 rounded border-2 border-rose-300 shadow-lg">
+              <div className="p-0.5 text-[6px] text-rose-800 text-center font-bold">
+                17
+                <br />
+                AÇÃO
+                <br />
+                SOCIAL
+              </div>
+            </div>
+
+            {/* Biblioteca Central (bottom-left of center, green) */}
+            <div className="absolute bottom-[12%] left-[20%] w-20 h-14 bg-green-300 rounded border-2 border-green-400 shadow-lg">
+              <div className="p-0.5 text-[7px] text-green-800 text-center font-bold">
                 BIBLIOTECA
                 <br />
                 CENTRAL
               </div>
             </div>
 
-            {/* Campus green areas and gardens */}
-            <div className="absolute top-[20%] left-[15%] w-16 h-12 bg-green-200 rounded-full opacity-60"></div>
-            <div className="absolute bottom-[35%] right-[30%] w-20 h-16 bg-green-200 rounded-full opacity-60"></div>
-            <div className="absolute top-[55%] right-[35%] w-14 h-14 bg-green-200 rounded-full opacity-60"></div>
-            <div className="absolute top-[40%] left-[25%] w-12 h-8 bg-green-200 rounded-full opacity-60"></div>
-
-            {/* IST Logo */}
-            <div className="absolute top-6 left-6 w-24 h-24 bg-white rounded-full border-4 border-primary shadow-2xl flex items-center justify-center">
-              <img
-                src="/Imagem2.png"
-                alt="IST"
-                className="w-20 h-20 rounded-full"
-              />
+            {/* 16 - Piscina (bottom-center-left) */}
+            <div className="absolute bottom-[15%] left-[42%] w-14 h-12 bg-cyan-300 rounded border-2 border-cyan-400 shadow-lg">
+              <div className="p-0.5 text-[6px] text-cyan-800 text-center font-bold">
+                16
+                <br />
+                PISCINA
+              </div>
             </div>
 
-            {/* Campus entrance */}
-            <div className="absolute bottom-2 left-1/2 w-8 h-8 bg-yellow-400 rounded-full border-2 border-yellow-600 flex items-center justify-center transform -translate-x-1/2">
-              <span className="text-xs font-bold text-yellow-900">🚇</span>
+            {/* 15 - Campos de Jogos (bottom-center, large green) */}
+            <div className="absolute bottom-[8%] left-[58%] w-22 h-16 bg-green-300 rounded border-2 border-green-400 shadow-lg">
+              <div className="p-0.5 text-[7px] text-green-800 text-center font-bold">
+                15
+                <br />
+                CAMPOS
+                <br />
+                JOGOS
+              </div>
             </div>
+
+            {/* Green landscaping areas */}
+            <div className="absolute top-[28%] left-[55%] w-14 h-12 bg-green-200 rounded-full opacity-60"></div>
+            <div className="absolute top-[52%] left-[70%] w-12 h-10 bg-green-200 rounded-full opacity-60"></div>
+            <div className="absolute top-[35%] left-[25%] w-10 h-8 bg-green-200 rounded-full opacity-60"></div>
+            <div className="absolute bottom-[25%] left-[50%] w-16 h-12 bg-green-200 rounded-full opacity-60"></div>
+
+            {/* Campus entrance marker */}
+            <div className="absolute bottom-2 left-1/2 w-8 h-8 bg-yellow-400 rounded-full border-2 border-yellow-600 flex items-center justify-center transform -translate-x-1/2 shadow-lg">
+              <span className="text-sm font-bold text-yellow-900">🚇</span>
+            </div>
+
+            {/* Campus boundary paths */}
+            <div className="absolute top-[40%] left-0 w-full h-0.5 bg-gray-300 opacity-40"></div>
+            <div className="absolute top-[70%] left-0 w-4/5 h-0.5 bg-gray-300 opacity-40"></div>
+            <div className="absolute bottom-8 left-1/2 w-12 h-16 bg-gray-200 transform -translate-x-1/2 opacity-60"></div>
           </div>
 
           {/* Bathroom Pins */}

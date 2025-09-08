@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SearchInput } from "@/components/ui/search-input";
 import { BathroomCard } from "@/components/bathroom-card";
-import { InteractiveMap } from "@/components/interactive-map";
+import { LeafletMap } from "@/components/leaflet-map";
 import { ReviewForm } from "@/components/review-form";
 import { BathroomDetails } from "@/components/bathroom-details";
 import { SidebarMenu } from "@/components/sidebar-menu";
@@ -94,7 +94,7 @@ const Index = () => {
             />
             Mapa do Campus IST
           </h2>
-          <InteractiveMap
+          <LeafletMap
             onBathroomSelect={(bathroom) => setSelectedBathroom(bathroom)}
           />
         </div>
