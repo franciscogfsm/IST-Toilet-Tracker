@@ -4,15 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SearchInput } from "@/components/ui/search-input";
 import { BathroomCard } from "@/components/bathroom-card";
-import { MapView } from "@/components/map-view";
+import { InteractiveMap } from "@/components/interactive-map";
 import { ReviewForm } from "@/components/review-form";
+import { SidebarMenu } from "@/components/sidebar-menu";
 import { bathrooms } from "@/data/bathrooms";
+
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBathroom, setSelectedBathroom] = useState<string | null>(null);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewBathroom, setReviewBathroom] = useState<string>("");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Filter bathrooms based on search
   const filteredBathrooms = bathrooms.filter(bathroom =>
@@ -35,14 +38,17 @@ const Index = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-hover rounded-full flex items-center justify-center">
-                <div className="text-primary-foreground font-bold text-sm">IST</div>
-              </div>
+              <img src="/src/assets/logo.png" alt="CaganISTo" className="w-10 h-10 rounded-full" />
               <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-primary-hover bg-clip-text text-transparent">
                 CaganISTo
               </h1>
             </div>
-            <Button variant="outline" size="sm" className="border-border/50">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="border-border/50"
+              onClick={() => setIsMenuOpen(true)}
+            >
               <Menu className="h-4 w-4" />
             </Button>
           </div>
@@ -59,16 +65,9 @@ const Index = () => {
         />
 
         {/* Map */}
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">Mapa do Campus</h2>
-          <MapView
-            bathrooms={bathrooms.map(b => ({
-              id: b.id,
-              name: b.name,
-              x: b.x,
-              y: b.y,
-              rating: b.rating
-            }))}
+        <div className="space-y-3" id="map">
+          <h2 className="text-lg font-semibold text-foreground">Mapa do Campus IST</h2>
+          <InteractiveMap
             onBathroomSelect={(bathroom) => setSelectedBathroom(bathroom.id)}
           />
         </div>
@@ -91,7 +90,7 @@ const Index = () => {
         )}
 
         {/* Top Bathrooms */}
-        <div className="space-y-3">
+        <div className="space-y-3" id="top">
           <h2 className="text-lg font-semibold text-foreground">Top 5 casas de banho do IST</h2>
           <div className="space-y-3">
             {sortedBathrooms
@@ -130,6 +129,12 @@ const Index = () => {
             </div>
           </div>
         )}
+
+        {/* Sidebar Menu */}
+        <SidebarMenu 
+          isOpen={isMenuOpen} 
+          onClose={() => setIsMenuOpen(false)} 
+        />
       </div>
     </div>
   );
