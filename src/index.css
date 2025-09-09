@@ -133,6 +133,13 @@ All colors MUST be HSL.
   }
 }
 
+/* Respect user "reduce-motion" setting */
+.reduce-motion * {
+  transition: none !important;
+  animation: none !important;
+  scroll-behavior: auto !important;
+}
+
 /* Leaflet Mobile Optimizations */
 .leaflet-container {
   touch-action: pan-x pan-y;

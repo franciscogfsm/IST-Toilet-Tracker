@@ -42,7 +42,7 @@ const sheetVariants = cva(
         center:
           "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border rounded-2xl data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         rightCompact:
-          "top-6 bottom-6 right-0 h-auto w-[88vw] sm:w-[360px] max-h-[calc(100vh-3rem)] overflow-hidden border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right rounded-l-2xl rounded-r-none",
+          "top-2 bottom-2 sm:top-6 sm:bottom-6 right-0 h-auto w-[80vw] sm:w-[360px] max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-3rem)] overflow-hidden border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right rounded-l-2xl rounded-r-none",
       },
     },
     defaultVariants: {

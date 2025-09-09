@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { LeafletMap } from "./leaflet-map";
-import { BathroomFilters } from "./bathroom-filters";
 import { Bathroom, bathrooms } from "@/data/bathrooms";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -8,16 +7,22 @@ interface MapWithFiltersProps {
   onBathroomSelect: (bathroom: Bathroom | null) => void;
   bathroomData?: Bathroom[];
   isModalOpen?: boolean;
+  defaultFloor?: string | null;
 }
 
 export function MapWithFilters({
   onBathroomSelect,
   bathroomData = bathrooms,
   isModalOpen = false,
+  defaultFloor = null,
 }: MapWithFiltersProps) {
-  const [filteredBathrooms, setFilteredBathrooms] = useState<Bathroom[]>(
-    bathroomData.filter((bathroom) => bathroom.floor === "0") // Start with ground floor only (R/C)
-  );
+  const [filteredBathrooms, setFilteredBathrooms] = useState<Bathroom[]>(() => {
+    if (defaultFloor && bathroomData.some((b) => b.floor === defaultFloor)) {
+      return bathroomData.filter((bathroom) => bathroom.floor === defaultFloor);
+    }
+    // Fallback: show all initially if defaultFloor not available
+    return [...bathroomData];
+  });
 
   const handleFilterChange = (filtered: Bathroom[]) => {
     setFilteredBathrooms(filtered);
@@ -39,6 +44,7 @@ export function MapWithFilters({
         <CompactBathroomFilters
           onFilterChange={handleFilterChange}
           allBathrooms={bathroomData}
+          defaultFloor={defaultFloor}
         />
       </div>
     </div>
@@ -49,13 +55,21 @@ export function MapWithFilters({
 interface CompactBathroomFiltersProps {
   onFilterChange: (filteredBathrooms: Bathroom[]) => void;
   allBathrooms: Bathroom[];
+  defaultFloor?: string | null;
 }
 
 function CompactBathroomFilters({
   onFilterChange,
   allBathrooms,
+  defaultFloor = null,
 }: CompactBathroomFiltersProps) {
-  const [selectedFloor, setSelectedFloor] = useState<string | null>("0"); // Default to ground floor
+  const initialFloor =
+    defaultFloor && allBathrooms.some((b) => b.floor === defaultFloor)
+      ? defaultFloor
+      : null;
+  const [selectedFloor, setSelectedFloor] = useState<string | null>(
+    initialFloor
+  );
   const [selectedBuilding, setSelectedBuilding] = useState<string | null>(null);
   const [showAccessibleOnly, setShowAccessibleOnly] = useState(false);
   const [currentFloorPage, setCurrentFloorPage] = useState(0);

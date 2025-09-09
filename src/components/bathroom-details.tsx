@@ -18,6 +18,7 @@ import {
   Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -366,29 +367,36 @@ export function BathroomDetails({
             </h3>
 
             <div className="space-y-4">
-              {bathroom.reviews && bathroom.reviews.length > 0 ? (
-                bathroom.reviews.slice(0, 3).map((review) => (
-                  <Card key={review.id} className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <p className="font-medium text-sm">{review.user}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          {renderStars(review.rating)}
-                          <span className="text-xs text-gray-500">
-                            {review.date}
-                          </span>
+              {bathroom.reviews ? (
+                bathroom.reviews.length > 0 ? (
+                  bathroom.reviews.slice(0, 3).map((review) => (
+                    <Card key={review.id} className="p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <p className="font-medium text-sm">{review.user}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            {renderStars(review.rating)}
+                            <span className="text-xs text-gray-500">
+                              {review.date}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-2">
-                      {review.comment}
-                    </p>
-                  </Card>
-                ))
+                      <p className="text-sm text-gray-600 mt-2">
+                        {review.comment}
+                      </p>
+                    </Card>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500 text-center py-4">
+                    Nenhuma avaliação ainda. Seja o primeiro a avaliar! 🌟
+                  </p>
+                )
               ) : (
-                <p className="text-sm text-gray-500 text-center py-4">
-                  Nenhuma avaliação ainda. Seja o primeiro a avaliar! 🌟
-                </p>
+                <div className="space-y-3">
+                  <Skeleton className="h-20 w-full rounded-xl" />
+                  <Skeleton className="h-20 w-full rounded-xl" />
+                </div>
               )}
             </div>
             {bathroom.reviews && bathroom.reviews.length > 3 && (

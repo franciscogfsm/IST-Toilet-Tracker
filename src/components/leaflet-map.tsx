@@ -867,49 +867,44 @@ ${editableBathrooms
         </div>
       )}
 
-      {/* Simplified Instructions for Mobile */}
-      <div className="absolute bottom-2 left-2 right-2 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-lg px-2 py-1 text-[9px] leading-tight z-[800] border border-gray-200/30 dark:border-gray-700/30 shadow-md">
-        {isEditMode ? (
-          <div className="w-full text-center">
-            {selectedEditBathroom ? (
-              <span className="text-green-600 font-medium">
-                🎯 Clique no mapa para reposicionar
-              </span>
-            ) : (
-              <span className="text-orange-600 font-medium">
-                ✏️ Clique numa casa de banho
-              </span>
-            )}
-          </div>
-        ) : (
-          <div className="flex items-center justify-between gap-2 text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <span className="text-primary font-medium">
-                {(filteredBathrooms || internalFilteredBathrooms).length}/
-                {bathrooms.length}
-              </span>
-              <span>casas de banho</span>
+      {/* Simplified Instructions / Hint (no counters) */}
+      {(isEditMode || showTouchHint) && (
+        <div className="absolute bottom-2 left-2 right-2 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-lg px-2 py-1 text-[9px] leading-tight z-[800] border border-gray-200/30 dark:border-gray-700/30 shadow-md">
+          {isEditMode ? (
+            <div className="w-full text-center">
+              {selectedEditBathroom ? (
+                <span className="text-green-600 font-medium">
+                  🎯 Clique no mapa para reposicionar
+                </span>
+              ) : (
+                <span className="text-orange-600 font-medium">
+                  ✏️ Clique numa casa de banho
+                </span>
+              )}
             </div>
-            {showTouchHint && (
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/50 shadow-sm"
-                onClick={() => {
-                  try {
-                    localStorage.setItem("map_hint_v1", "1");
-                  } catch (_) {}
-                  setShowTouchHint(false);
-                }}
-                title="Dica"
-              >
-                <span className="animate-pulse">👆</span>
-                <span className="hidden sm:inline">Toque num pin</span>
-                <span className="sm:hidden">Toque num pin</span>
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+          ) : (
+            showTouchHint && (
+              <div className="w-full flex items-center justify-center">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/50 shadow-sm"
+                  onClick={() => {
+                    try {
+                      localStorage.setItem("map_hint_v1", "1");
+                    } catch (_) {}
+                    setShowTouchHint(false);
+                  }}
+                  title="Dica"
+                >
+                  <span className="animate-pulse">👆</span>
+                  <span className="hidden sm:inline">Toque num pin</span>
+                  <span className="sm:hidden">Toque num pin</span>
+                </button>
+              </div>
+            )
+          )}
+        </div>
+      )}
     </div>
   );
 }

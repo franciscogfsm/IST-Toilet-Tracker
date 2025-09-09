@@ -2,7 +2,12 @@ import type { Config } from "tailwindcss";
 
 export default {
   darkMode: ["class"],
-  content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
+  content: [
+    "./pages/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./app/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
+  ],
   prefix: "",
   theme: {
     container: {
@@ -65,6 +70,15 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       keyframes: {
+        "menu-in": {
+          from: { opacity: "0", transform: "translateY(6px) scale(0.98)" },
+          to: { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        "float-soft": {
+          "0%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-2px)" },
+          "100%": { transform: "translateY(0)" },
+        },
         "accordion-down": {
           from: {
             height: "0",
@@ -83,6 +97,8 @@ export default {
         },
       },
       animation: {
+        "menu-in": "menu-in 360ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards",
+        "float-soft": "float-soft 5s ease-in-out infinite",
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },

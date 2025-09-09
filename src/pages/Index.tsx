@@ -1,5 +1,15 @@
-import { useEffect, useState } from "react";
-import { Menu, Target, Star, TrendingUp, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  Menu,
+  Target,
+  Star,
+  TrendingUp,
+  Sparkles,
+  Map,
+  MessageCircle,
+  ChevronUp,
+  Github,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -18,6 +28,16 @@ import { ReviewForm } from "@/components/review-form";
 import { BathroomDetails } from "@/components/bathroom-details";
 import { SidebarMenu } from "@/components/sidebar-menu";
 import { bathrooms, Bathroom, Review } from "@/data/bathrooms";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useUserSettings } from "@/hooks/use-user-settings";
+import { Suspense, lazy } from "react";
+
+// Lazy-load MapWithFilters for performance
+const LazyMapWithFilters = lazy(() =>
+  import("@/components/map-with-filters").then((m) => ({
+    default: m.MapWithFilters,
+  }))
+);
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -34,6 +54,10 @@ const Index = () => {
     useState<string>("");
   const [selectedBuilding, setSelectedBuilding] = useState<string>("");
   const [selectedFloor, setSelectedFloor] = useState<string>("");
+  const aboutRef = useRef<HTMLDivElement | null>(null);
+  const [aboutVisible, setAboutVisible] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+  const { settings } = useUserSettings();
 
   // Derived pickers for review selector
   const buildings = Array.from(
@@ -56,7 +80,12 @@ const Index = () => {
 
   const scrollToMap = () => {
     const el = document.getElementById("map");
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!el) return;
+    const headerOffset = 72;
+    const rect = el.getBoundingClientRect();
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const top = rect.top + scrollTop - headerOffset;
+    window.scrollTo({ top, behavior: "smooth" });
   };
 
   // IST geolocation helpers (kept local to avoid cross-file coupling)
@@ -133,6 +162,38 @@ const Index = () => {
     );
   }, []);
 
+  // Reveal animations for the About section
+  useEffect(() => {
+    if (!aboutRef.current) return;
+    const el = aboutRef.current;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) setAboutVisible(true);
+        });
+      },
+      { threshold: 0.2 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  // Always start at top on reload and control scroll restoration
+  useEffect(() => {
+    const supports = "scrollRestoration" in history;
+    if (supports) history.scrollRestoration = "manual";
+    // move to top asap
+    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+    // show back-to-top button when scrolled
+    const onScroll = () => setShowBackToTop(window.scrollY > 400);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (supports) history.scrollRestoration = "auto";
+    };
+  }, []);
+
   // Filter bathrooms based on search
   const filteredBathrooms = bathroomData.filter(
     (bathroom) =>
@@ -176,6 +237,40 @@ const Index = () => {
     )
     .slice(0, 5);
   const topBathrooms = withDynamicDistance(topBathroomsBase);
+
+  // Respect user setting to hide distance when off campus
+  const showOffCampusDistance = settings.showDistanceOffCampus;
+
+  // Scroll-in animation for Top 5
+  const [visibleTopIndices, setVisibleTopIndices] = useState<Set<number>>(
+    new Set()
+  );
+  const topListRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const container = topListRef.current;
+    if (!container) return;
+    const items = Array.from(
+      container.querySelectorAll("[data-top-item]")
+    ) as HTMLElement[];
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            const idxAttr = (e.target as HTMLElement).dataset.index;
+            const idx = idxAttr ? parseInt(idxAttr) : -1;
+            setVisibleTopIndices((prev) => {
+              const next = new Set(prev);
+              if (idx >= 0) next.add(idx);
+              return next;
+            });
+          }
+        });
+      },
+      { threshold: 0.2 }
+    );
+    items.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [topBathrooms]);
 
   const handleReviewBathroom = (bathroomName: string) => {
     setReviewBathroom(bathroomName);
@@ -286,16 +381,16 @@ const Index = () => {
             {/* Logo and Brand */}
             <div className="flex items-center gap-3 sm:gap-4">
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full blur-lg opacity-30"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full blur-lg opacity-30"></div>
                 <img
                   src="/Imagem2.png"
-                  alt="CaganISTo"
+                  alt="WC do Técnico"
                   className="relative w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full shadow-xl border-2 border-white/60 dark:border-gray-800/60 ring-2 ring-blue-500/20 hover:ring-blue-500/40 transition-transform duration-200 hover:scale-105"
                 />
               </div>
               <div className="space-y-0.5 sm:space-y-1">
-                <h1 className="text-lg sm:text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 bg-clip-text text-transparent tracking-tight">
-                  CaganISTo
+                <h1 className="text-lg sm:text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-blue-600 via-sky-600 to-cyan-600 dark:from-blue-400 dark:via-sky-400 dark:to-cyan-400 bg-clip-text text-transparent tracking-tight">
+                  IST Toilet Tracker
                 </h1>
                 <p className="text-[10px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 bg-gradient-to-r from-gray-600 to-gray-500 dark:from-gray-400 dark:to-gray-500 bg-clip-text text-transparent">
                   Instituto Superior Técnico
@@ -306,7 +401,7 @@ const Index = () => {
             {/* Navigation Pills - Desktop only */}
             <div className="hidden lg:flex items-center gap-2">
               <div className="flex items-center gap-1 bg-gray-100/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full p-1.5 border border-gray-200/50 dark:border-gray-700/50 shadow-md">
-                <button className="px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-purple-500 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105">
+                <button className="px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105">
                   Mapa
                 </button>
                 <button className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white/70 dark:hover:bg-gray-700/70 rounded-full transition-all duration-200">
@@ -332,9 +427,19 @@ const Index = () => {
       </header>
 
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
+        {/* Back to top */}
+        {showBackToTop && (
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="fixed bottom-5 right-5 z-40 rounded-full bg-white/90 dark:bg-gray-900/80 border border-gray-200/60 dark:border-gray-700/60 shadow-lg hover:shadow-xl transition-all p-3 animate-in fade-in slide-in-from-bottom-2"
+            aria-label="Voltar ao topo"
+          >
+            <ChevronUp className="h-5 w-5" />
+          </button>
+        )}
         {/* Search Section */}
         <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl blur-xl"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-2xl blur-xl"></div>
           <div className="relative bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
             <SearchInput
               placeholder="Buscar casa de banho..."
@@ -346,7 +451,7 @@ const Index = () => {
         </div>
 
         {/* Map Section */}
-        <div className="space-y-4" id="map">
+        <div className="space-y-4 scroll-mt-24" id="map">
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
             <div className="w-1 h-4 bg-gradient-to-b from-blue-400 to-blue-600 rounded-full"></div>
             <img
@@ -356,11 +461,25 @@ const Index = () => {
             />
             Mapa do Campus IST
           </h2>
-          <MapWithFilters
-            onBathroomSelect={handleBathroomSelect}
-            bathroomData={mapFilteredByName}
-            isModalOpen={!!selectedBathroomDetails}
-          />
+          <Suspense
+            fallback={
+              <div className="rounded-2xl border border-gray-200/50 dark:border-gray-700/50 p-3">
+                <Skeleton className="h-[360px] w-full rounded-xl" />
+                <div className="mt-2 flex gap-2">
+                  <Skeleton className="h-8 w-20 rounded-md" />
+                  <Skeleton className="h-8 w-24 rounded-md" />
+                  <Skeleton className="h-8 w-14 rounded-md" />
+                </div>
+              </div>
+            }
+          >
+            <LazyMapWithFilters
+              onBathroomSelect={handleBathroomSelect}
+              bathroomData={mapFilteredByName}
+              defaultFloor={settings.defaultFloor}
+              isModalOpen={!!selectedBathroomDetails}
+            />
+          </Suspense>
         </div>
 
         {/* Quick Stats (compact) */}
@@ -379,6 +498,10 @@ const Index = () => {
                     sortedBathrooms[0]?.distance ??
                     0}
                   m
+                </p>
+              ) : showOffCampusDistance ? (
+                <p className="text-base font-extrabold text-blue-600 dark:text-blue-400 tracking-tight">
+                  {sortedBathrooms[0]?.distance ?? 0}m
                 </p>
               ) : (
                 <p className="text-sm font-semibold text-muted-foreground">
@@ -421,7 +544,7 @@ const Index = () => {
         {sortedBathrooms.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-md">
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center shadow-md">
                 <Target className="h-4 w-4 text-white" />
               </div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
@@ -438,6 +561,12 @@ const Index = () => {
                 </div>
                 <BathroomCard
                   {...sortedBathrooms[0]}
+                  distance={
+                    isNearIST
+                      ? sortedBathrooms[0].dynamicDistance ??
+                        sortedBathrooms[0].distance
+                      : undefined
+                  }
                   isClosest
                   onViewDetails={() =>
                     handleViewBathroomDetails(sortedBathrooms[0])
@@ -453,7 +582,7 @@ const Index = () => {
         )}
 
         {/* Top Bathrooms */}
-        <div className="space-y-4" id="top">
+        <div className="space-y-4 scroll-mt-24" id="top">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full flex items-center justify-center shadow-md">
               <Star className="h-4 w-4 text-white" />
@@ -462,11 +591,15 @@ const Index = () => {
               Top 5 casas de banho do IST
             </h2>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-3" ref={topListRef}>
             {topBathrooms.map((bathroom, index) => {
               // Prefer dynamic distance on campus for display inside the card
-              const displayDistance =
-                bathroom.dynamicDistance ?? bathroom.distance;
+              // Show distance only when near IST; prefer dynamic value
+              const displayDistance = isNearIST
+                ? bathroom.dynamicDistance ?? bathroom.distance
+                : showOffCampusDistance
+                ? bathroom.distance
+                : undefined;
               const rankStyles =
                 index === 0
                   ? "from-yellow-400 to-yellow-500 ring-yellow-300"
@@ -479,7 +612,15 @@ const Index = () => {
               return (
                 <div
                   key={bathroom.id}
-                  className="relative p-3 sm:p-4 bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm rounded-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-md hover:shadow-lg transition-colors"
+                  data-top-item
+                  data-index={index}
+                  className={
+                    "relative p-3 sm:p-4 bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm rounded-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-md transition-all duration-500 " +
+                    (visibleTopIndices.has(index)
+                      ? "opacity-100 translate-y-0 hover:shadow-lg"
+                      : "opacity-0 translate-y-3")
+                  }
+                  style={{ transitionDelay: `${index * 60}ms` }}
                 >
                   {/* Rank badge */}
                   <div
@@ -502,9 +643,9 @@ const Index = () => {
         </div>
 
         {/* Enhanced Review Button */}
-        <Card className="border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-purple-50/80 to-pink-100/60 dark:from-purple-950/30 dark:to-pink-900/20 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+        <Card className="border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-blue-50/80 to-cyan-100/60 dark:from-blue-950/20 dark:to-cyan-900/10 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
           <CardContent className="p-6 text-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl">
+            <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl">
               <Sparkles className="h-8 w-8 text-white" />
             </div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
@@ -598,7 +739,7 @@ const Index = () => {
               </button>
             </div>
             <Button
-              className="relative isolate overflow-hidden w-full h-12 sm:h-14 px-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold sm:font-bold rounded-2xl transition-all duration-200 hover:shadow-xl text-base sm:text-lg touch-manipulation ring-1 ring-white/20 dark:ring-white/10"
+              className="relative isolate overflow-hidden w-full h-12 sm:h-14 px-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold sm:font-bold rounded-2xl transition-all duration-200 hover:shadow-xl text-base sm:text-lg touch-manipulation ring-1 ring-white/20 dark:ring-white/10"
               onClick={() => {
                 const chosen = bathroomData.find(
                   (b) => b.id === pendingReviewBathroomId
@@ -665,6 +806,132 @@ const Index = () => {
             onReviewSubmit={handleReviewSubmit}
           />
         )}
+
+        {/* About Section */}
+        <section id="about" className="mt-10 sm:mt-14 scroll-mt-24">
+          <div
+            ref={aboutRef}
+            className="relative overflow-hidden rounded-3xl border border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-white/90 to-blue-50/60 dark:from-gray-900/80 dark:to-indigo-950/30 p-6 sm:p-10 shadow-xl hover:shadow-2xl transition-shadow duration-300"
+          >
+            {/* Decorative glows */}
+            <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 rounded-full bg-blue-400/10 blur-3xl animate-pulse" />
+            <div className="pointer-events-none absolute -bottom-24 -right-24 w-72 h-72 rounded-full bg-cyan-500/10 blur-3xl animate-pulse" />
+
+            {/* Heading */}
+            <h2
+              className={
+                `text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100 mb-3 ` +
+                (aboutVisible
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-3") +
+                " transition-all duration-700"
+              }
+            >
+              Sobre o Projeto
+            </h2>
+
+            {/* Body */}
+            <p
+              className={
+                `text-sm sm:text-base text-gray-700 dark:text-gray-300 max-w-3xl ` +
+                (aboutVisible
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-3") +
+                " transition-all duration-700 delay-100"
+              }
+            >
+              Criámos o <span className="font-semibold">IST Toilet Finder</span>{" "}
+              para ajudar os alunos do Instituto Superior Técnico a encontrar as
+              melhores casas de banho no campus. Aqui podes explorar o mapa, ver
+              avaliações reais de estudantes e partilhar a sua experiência para
+              ajudar a comunidade.
+            </p>
+
+            {/* Feature chips */}
+            <div
+              className={
+                `mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 ` +
+                (aboutVisible ? "opacity-100" : "opacity-0") +
+                " transition-opacity duration-700 delay-200"
+              }
+            >
+              <div className="flex items-center gap-3 rounded-2xl bg-white/70 dark:bg-gray-900/60 border border-gray-200/50 dark:border-gray-700/50 p-3 shadow-sm hover:shadow-md transition-all">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 text-white flex items-center justify-center">
+                  <Map className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Mapa Interativo
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Pins por edifício e piso
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-2xl bg-white/70 dark:bg-gray-900/60 border border-gray-200/50 dark:border-gray-700/50 p-3 shadow-sm hover:shadow-md transition-all">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-500 text-white flex items-center justify-center">
+                  <Star className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Top Avaliações
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Ranking por qualidade
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-2xl bg-white/70 dark:bg-gray-900/60 border border-gray-200/50 dark:border-gray-700/50 p-3 shadow-sm hover:shadow-md transition-all">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-600 to-teal-600 text-white flex items-center justify-center">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Partilhe a sua experiência
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Reviews anónimas e rápidas
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* CTA */}
+            <div className="mt-6 flex flex-wrap gap-2">
+              <Button
+                onClick={scrollToMap}
+                className={
+                  `rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl ` +
+                  (aboutVisible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-2") +
+                  " transition-all duration-700 delay-300"
+                }
+              >
+                Explorar o mapa
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  window.open(
+                    "https://github.com/franciscogfsm/caganisto",
+                    "_blank",
+                    "noopener,noreferrer"
+                  )
+                }
+                className={
+                  `rounded-xl border-blue-200/60 text-blue-700 hover:bg-blue-50 ` +
+                  (aboutVisible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-2") +
+                  " transition-all duration-700 delay-350"
+                }
+              >
+                <Github className="h-4 w-4 mr-2" /> Contribuir
+              </Button>
+            </div>
+          </div>
+        </section>
 
         {/* Sidebar Menu */}
         <SidebarMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
