@@ -9,9 +9,9 @@ interface SearchInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 export function SearchInput({ className, ...props }: SearchInputProps) {
   return (
     <div className={cn("relative", className)}>
-      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
       <Input
-        className="pl-10 bg-background/80 backdrop-blur-sm border-border/50 focus:border-primary/50 focus:ring-primary/20"
+        className="h-12 sm:h-14 pl-12 rounded-full bg-white/80 dark:bg-gray-900/70 border border-gray-200/60 dark:border-gray-700/60 text-base sm:text-lg shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
         {...props}
       />
     </div>

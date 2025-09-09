@@ -1,12 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  MapContainer,
-  TileLayer,
-  Marker,
-  Popup,
-  useMap,
-  Circle,
-} from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMap, Circle } from "react-leaflet";
 import { Icon, LatLng } from "leaflet";
 import {
   MapPin,
@@ -17,6 +10,8 @@ import {
   RotateCcw,
   Filter,
   Edit3,
+  Plus,
+  Minus,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,6 +30,8 @@ const IST_BOUNDS: [[number, number], [number, number]] = [
 
 interface LeafletMapProps {
   onBathroomSelect?: (bathroom: Bathroom) => void;
+  filteredBathrooms?: Bathroom[];
+  isModalOpen?: boolean;
 }
 
 // Custom component to handle map events
@@ -72,6 +69,46 @@ function MapController({
   }, [map]);
 
   return null;
+}
+
+// Custom Zoom Controls Component
+function CustomZoomControls() {
+  const map = useMap();
+
+  const zoomIn = () => {
+    map.zoomIn(0.5);
+  };
+
+  const zoomOut = () => {
+    map.zoomOut(0.5);
+  };
+
+  return (
+    <div className="absolute bottom-16 right-2 z-[900]">
+      <div className="bg-white/90 dark:bg-gray-900/90 supports-[backdrop-filter]:backdrop-blur rounded-xl p-1 shadow-lg border border-gray-200/60 dark:border-gray-700/60">
+        <div className="flex flex-col gap-0.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={zoomIn}
+            className="w-8 h-8 p-0 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg touch-manipulation transition-all duration-200"
+            title="Zoom +"
+          >
+            <Plus className="h-3.5 w-3.5 text-gray-600" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={zoomOut}
+            className="w-8 h-8 p-0 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg touch-manipulation transition-all duration-200"
+            title="Zoom -"
+          >
+            <Minus className="h-3.5 w-3.5 text-gray-600" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // Custom bathroom marker icon
@@ -112,7 +149,11 @@ const userLocationIcon = new Icon({
   iconAnchor: [10, 10],
 });
 
-export function LeafletMap({ onBathroomSelect }: LeafletMapProps) {
+export function LeafletMap({
+  onBathroomSelect,
+  filteredBathrooms,
+  isModalOpen = false,
+}: LeafletMapProps) {
   const [userLocation, setUserLocation] = useState<[number, number] | null>(
     null
   );
@@ -120,13 +161,35 @@ export function LeafletMap({ onBathroomSelect }: LeafletMapProps) {
   const [isLocating, setIsLocating] = useState(false);
   const [selectedBathroom, setSelectedBathroom] = useState<string | null>(null);
   const [resetToCenter, setResetToCenter] = useState(false);
-  const [filteredBathrooms, setFilteredBathrooms] =
+  const [internalFilteredBathrooms, setInternalFilteredBathrooms] =
     useState<Bathroom[]>(bathrooms);
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(true); // Start with filters open by default
   const [isEditMode, setIsEditMode] = useState(false);
   const [editableBathrooms, setEditableBathrooms] =
     useState<Bathroom[]>(bathrooms);
   const [selectedEditBathroom, setSelectedEditBathroom] = useState<string>("");
+  // Show a short hint telling users to tap a marker (persist once per device)
+  const [showTouchHint, setShowTouchHint] = useState(false);
+
+  useEffect(() => {
+    try {
+      const seen = localStorage.getItem("map_hint_v1");
+      if (!seen) {
+        setShowTouchHint(true);
+        const t = setTimeout(() => setShowTouchHint(false), 7000);
+        return () => clearTimeout(t);
+      }
+    } catch (_) {
+      // ignore storage issues
+    }
+  }, []);
+
+  // Auto-dismiss location error toast after 2 seconds
+  useEffect(() => {
+    if (!locationError) return;
+    const t = setTimeout(() => setLocationError(null), 2000);
+    return () => clearTimeout(t);
+  }, [locationError]);
 
   // Convert bathroom positions to real coordinates within IST bounds
   const convertToRealCoords = (x: number, y: number): [number, number] => {
@@ -212,11 +275,12 @@ export function LeafletMap({ onBathroomSelect }: LeafletMapProps) {
         ) {
           setUserLocation(userPos);
         } else {
-          // If user is not at IST, set location to IST center
-          setUserLocation(IST_CENTER);
-          setLocationError(
-            "Localização definida para o IST (fora do campus detectado)"
-          );
+          // If user is not at IST, do not show a fake current location
+          setUserLocation(null);
+          setLocationError("Fora do campus detectado — sem localização atual");
+          // Optionally recenter to IST to keep context
+          setResetToCenter(true);
+          setTimeout(() => setResetToCenter(false), 1200);
         }
         setIsLocating(false);
       },
@@ -235,7 +299,9 @@ export function LeafletMap({ onBathroomSelect }: LeafletMapProps) {
 
   // Get bathrooms with distances from user location
   const getBathroomsWithDistances = () => {
-    const bathroomsToUse = isEditMode ? editableBathrooms : filteredBathrooms;
+    const bathroomsToUse = isEditMode
+      ? editableBathrooms
+      : filteredBathrooms || internalFilteredBathrooms;
     return bathroomsToUse
       .map((bathroom) => {
         const [lat, lng] = convertToRealCoords(bathroom.x, bathroom.y);
@@ -251,7 +317,8 @@ export function LeafletMap({ onBathroomSelect }: LeafletMapProps) {
           return null;
         }
 
-        let distance = 0;
+        // Default to static distance when user location isn't available
+        let distance = bathroom.distance ?? 0;
         if (userLocation) {
           distance = calculateDistance(
             userLocation[0],
@@ -276,7 +343,47 @@ export function LeafletMap({ onBathroomSelect }: LeafletMapProps) {
 
   const bathroomsWithCoords = getBathroomsWithDistances();
 
+  // Global prevention of any tooltip or popup
+  useEffect(() => {
+    const removeTooltips = () => {
+      const markers = document.querySelectorAll(".leaflet-marker-icon");
+      markers.forEach((marker) => {
+        marker.removeAttribute("title");
+        marker.removeAttribute("alt");
+        (marker as HTMLElement).style.pointerEvents = "auto";
+      });
+
+      // Remove any stray popups or tooltips
+      const popups = document.querySelectorAll(
+        ".leaflet-popup, .leaflet-tooltip"
+      );
+      popups.forEach((popup) => {
+        (popup as HTMLElement).style.display = "none";
+      });
+    };
+
+    // Run immediately and on interval to catch dynamically added markers
+    removeTooltips();
+    const interval = setInterval(removeTooltips, 100);
+
+    return () => clearInterval(interval);
+  }, [bathroomsWithCoords]);
+
+  // Clear selected bathroom when modal opens
+  useEffect(() => {
+    if (isModalOpen) {
+      setSelectedBathroom(null);
+    }
+  }, [isModalOpen]);
+
   const handleBathroomClick = (bathroom: Bathroom) => {
+    // Dismiss the hint once the user interacts with markers
+    if (showTouchHint) {
+      try {
+        localStorage.setItem("map_hint_v1", "1");
+      } catch (_) {}
+      setShowTouchHint(false);
+    }
     if (isEditMode) {
       // In edit mode, select the bathroom for repositioning
       setSelectedEditBathroom(bathroom.id);
@@ -295,7 +402,7 @@ export function LeafletMap({ onBathroomSelect }: LeafletMapProps) {
   };
 
   const handleFilterChange = (filtered: Bathroom[]) => {
-    setFilteredBathrooms(filtered);
+    setInternalFilteredBathrooms(filtered);
   };
 
   const handlePositionUpdate = (bathroomId: string, x: number, y: number) => {
@@ -306,7 +413,7 @@ export function LeafletMap({ onBathroomSelect }: LeafletMapProps) {
     );
 
     // Also update filtered bathrooms if they include this bathroom
-    setFilteredBathrooms((prev) =>
+    setInternalFilteredBathrooms((prev) =>
       prev.map((bathroom) =>
         bathroom.id === bathroomId ? { ...bathroom, x, y } : bathroom
       )
@@ -377,48 +484,88 @@ ${editableBathrooms
   };
 
   return (
-    <div className="relative w-full h-[600px]">
-      {/* Map Controls */}
-      <div className="absolute top-4 left-4 z-[1000] flex flex-col gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={getCurrentLocation}
-          disabled={isLocating}
-          className="w-10 h-10 p-0 bg-background/90 backdrop-blur-sm hover:bg-background"
-        >
-          <Locate className={`h-4 w-4 ${isLocating ? "animate-spin" : ""}`} />
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={resetView}
-          className="w-10 h-10 p-0 bg-background/90 backdrop-blur-sm hover:bg-background"
-        >
-          <RotateCcw className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowFilters(!showFilters)}
-          disabled={isEditMode}
-          className="w-10 h-10 p-0 bg-background/90 backdrop-blur-sm hover:bg-background"
-        >
-          <Filter className={`h-4 w-4 ${showFilters ? "text-primary" : ""}`} />
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={toggleEditMode}
-          className="w-10 h-10 p-0 bg-background/90 backdrop-blur-sm hover:bg-background"
-        >
-          <Edit3 className={`h-4 w-4 ${isEditMode ? "text-primary" : ""}`} />
-        </Button>
+    // Create a local stacking context so map overlays never escape above the page header/modal
+    <div
+      className={`relative isolate z-0 w-full h-[40vh] sm:h-[45vh] md:h-[55vh] lg:h-[500px] min-h-[300px] max-h-[600px] ${
+        isModalOpen ? "pointer-events-none" : ""
+      }`}
+    >
+      {/* Keep Leaflet internals under the header/modal (extra safety) */}
+      <style>
+        {`
+          .leaflet-container { z-index: 0 !important; }
+          .leaflet-top, .leaflet-bottom { z-index: 1 !important; }
+        `}
+      </style>
+      {/* Simplified Map Controls for Mobile */}
+      <div className="absolute top-2 left-2 z-[900] flex flex-col gap-1">
+        <div className="bg-white/90 dark:bg-gray-900/90 supports-[backdrop-filter]:backdrop-blur rounded-xl p-1 shadow-lg border border-gray-200/60 dark:border-gray-700/60">
+          <div className="flex flex-col gap-0.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={getCurrentLocation}
+              disabled={isLocating}
+              className="w-8 h-8 p-0 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg touch-manipulation transition-all duration-200"
+              title="Localização"
+            >
+              <Locate
+                className={`h-3.5 w-3.5 text-blue-600 ${
+                  isLocating ? "animate-spin" : ""
+                }`}
+              />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={resetView}
+              className="w-8 h-8 p-0 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg touch-manipulation transition-all duration-200"
+              title="Reset"
+            >
+              <RotateCcw className="h-3.5 w-3.5 text-gray-600" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              disabled={isEditMode}
+              className={`w-8 h-8 p-0 rounded-lg touch-manipulation transition-all duration-200 ${
+                showFilters
+                  ? "bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 dark:hover:bg-purple-900/50"
+                  : "hover:bg-purple-50 dark:hover:bg-purple-950/50"
+              }`}
+              title="Filtros"
+            >
+              <Filter
+                className={`h-3.5 w-3.5 ${
+                  showFilters ? "text-purple-600" : "text-gray-600"
+                }`}
+              />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleEditMode}
+              className={`w-8 h-8 p-0 rounded-lg touch-manipulation transition-all duration-200 ${
+                isEditMode
+                  ? "bg-orange-50 dark:bg-orange-950/50 hover:bg-orange-100 dark:hover:bg-orange-900/50"
+                  : "hover:bg-orange-50 dark:hover:bg-orange-950/50"
+              }`}
+              title="Editar"
+            >
+              <Edit3
+                className={`h-3.5 w-3.5 ${
+                  isEditMode ? "text-orange-600" : "text-gray-600"
+                }`}
+              />
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Edit Mode Panel */}
       {isEditMode && (
-        <div className="absolute top-4 left-20 z-[1000] w-80">
+        <div className="absolute top-2 sm:top-4 left-12 sm:left-20 z-[1000] w-72 sm:w-80">
           <EditModeControls
             isEditMode={isEditMode}
             onToggleEditMode={toggleEditMode}
@@ -430,44 +577,51 @@ ${editableBathrooms
         </div>
       )}
 
-      {/* Filters Panel */}
-      {showFilters && !isEditMode && (
-        <div className="absolute top-4 left-20 z-[1000] w-80 max-h-[500px] overflow-y-auto">
-          <BathroomFilters
-            onFilterChange={handleFilterChange}
-            allBathrooms={bathrooms}
-          />
-        </div>
-      )}
+      {/* Filters Panel - Removed from overlay, will be moved to parent component */}
 
       {/* Error/Status Messages */}
       {locationError && (
-        <div className="absolute top-4 left-20 z-[1000] bg-yellow-100 border border-yellow-400 text-yellow-700 px-3 py-2 rounded-lg text-sm max-w-xs">
-          {locationError}
+        <div className="absolute top-20 left-3 right-3 z-[1200] bg-yellow-50/95 dark:bg-yellow-950/95 backdrop-blur-sm border border-yellow-200/60 dark:border-yellow-800/60 text-yellow-800 dark:text-yellow-200 px-2.5 py-1.5 rounded-xl text-[11px] shadow-lg">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full flex-shrink-0"></div>
+            <span className="font-medium">{locationError}</span>
+          </div>
         </div>
       )}
 
-      {/* Map Legend */}
-      <div className="absolute top-4 right-4 bg-background/95 backdrop-blur-sm rounded-lg p-3 shadow-md border border-border/50 z-[1000]">
-        <div className="space-y-2">
-          <div className="text-xs font-medium text-foreground mb-2">
+      {/* Compact Map Legend for Mobile */}
+      <div className="absolute top-2 right-2 bg-white/90 dark:bg-gray-900/90 supports-[backdrop-filter]:backdrop-blur rounded-xl p-2 shadow-lg border border-gray-200/60 dark:border-gray-700/60 z-[900] max-w-[150px]">
+        <div className="space-y-1">
+          <div className="text-[10px] font-medium text-foreground mb-1 text-center">
             Legenda
           </div>
-          <div className="flex items-center gap-2 text-xs">
-            <div className="w-4 h-4 bg-primary rounded-full"></div>
-            <span className="text-muted-foreground">Excelente (4+★)</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs">
-            <div className="w-4 h-4 bg-yellow-500 rounded-full"></div>
-            <span className="text-muted-foreground">Bom (3.5+★)</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs">
-            <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-            <span className="text-muted-foreground">Básico (&lt;3.5★)</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs pt-1 border-t border-border/50">
-            <div className="w-4 h-4 bg-primary rounded-full border-2 border-white"></div>
-            <span className="text-muted-foreground">Sua localização</span>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-[10px]">
+              <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 ring-1 ring-white/60"></div>
+              <span className="text-muted-foreground text-[9px] leading-tight">
+                Excelente
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-[10px]">
+              <div className="w-2 h-2 bg-yellow-500 rounded-full flex-shrink-0 ring-1 ring-white/60"></div>
+              <span className="text-muted-foreground text-[9px] leading-tight">
+                Bom
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-[10px]">
+              <div className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0 ring-1 ring-white/60"></div>
+              <span className="text-muted-foreground text-[9px] leading-tight">
+                Básico
+              </span>
+            </div>
+            <div className="border-t border-border/30 pt-1 mt-1">
+              <div className="flex items-center gap-2 text-[10px]">
+                <div className="w-2 h-2 bg-blue-500 rounded-full border border-white flex-shrink-0 ring-1 ring-white/60"></div>
+                <span className="text-muted-foreground text-[9px] leading-tight">
+                  Você
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -476,18 +630,26 @@ ${editableBathrooms
       <MapContainer
         center={IST_CENTER}
         zoom={17}
-        className="w-full h-full rounded-lg"
-        zoomControl={true}
+        className="w-full h-full rounded-2xl touch-none ring-1 ring-gray-200/40 dark:ring-gray-700/40 shadow-xl overflow-hidden"
+        zoomControl={false} // We have custom controls
         scrollWheelZoom={true}
         doubleClickZoom={true}
         touchZoom={true}
         dragging={true}
-        zoomSnap={1}
-        zoomDelta={1}
-        minZoom={14}
-        maxZoom={19}
-        attributionControl={true}
-        preferCanvas={false}
+        zoomSnap={0.25}
+        zoomDelta={0.5}
+        minZoom={15}
+        maxZoom={20}
+        attributionControl={false} // Hide attribution for cleaner mobile view
+        preferCanvas={true}
+        wheelPxPerZoomLevel={40}
+        trackResize={true}
+        bounceAtZoomLimits={true}
+        maxBounds={[
+          [IST_BOUNDS[0][0] - 0.002, IST_BOUNDS[0][1] - 0.002],
+          [IST_BOUNDS[1][0] + 0.002, IST_BOUNDS[1][1] + 0.002],
+        ]}
+        maxBoundsViscosity={0.8}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -507,6 +669,8 @@ ${editableBathrooms
           resetToCenter={resetToCenter}
         />
 
+        <CustomZoomControls />
+
         <MapClickHandler
           isEditMode={isEditMode}
           onPositionUpdate={handlePositionUpdate}
@@ -518,15 +682,20 @@ ${editableBathrooms
         {/* User Location Marker */}
         {userLocation && (
           <>
-            <Marker position={userLocation} icon={userLocationIcon}>
-              <Popup>
-                <div className="text-center">
-                  <h3 className="font-semibold text-sm">Sua Localização</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Campus IST Alameda
-                  </p>
-                </div>
-              </Popup>
+            <Marker
+              position={userLocation}
+              icon={userLocationIcon}
+              title=""
+              alt=""
+              eventHandlers={{
+                mouseover: (e) => {
+                  // Prevent any default tooltip behavior
+                  e.target.getElement()?.removeAttribute("title");
+                  e.target.getElement()?.removeAttribute("alt");
+                },
+              }}
+            >
+              {/* Popup removed to avoid overlay conflicts with modal */}
             </Marker>
 
             {/* Accuracy circle */}
@@ -560,74 +729,24 @@ ${editableBathrooms
                 bathroom.rating,
                 isEditMode && selectedEditBathroom === bathroom.id
               )}
+              title=""
+              alt=""
               eventHandlers={{
                 click: () => handleBathroomClick(bathroom),
+                mouseover: (e) => {
+                  // Prevent any default tooltip behavior
+                  e.target.getElement()?.removeAttribute("title");
+                  e.target.getElement()?.removeAttribute("alt");
+                },
               }}
             >
-              <Popup>
-                <div className="min-w-[200px]">
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="font-semibold text-sm">{bathroom.name}</h3>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-1">
-                    {bathroom.building}
-                  </p>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    <strong>Piso:</strong> {bathroom.floor}
-                  </p>
-
-                  <div className="flex items-center gap-1 mb-2">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`h-3 w-3 ${
-                          i < bathroom.rating
-                            ? "fill-yellow-400 text-yellow-400"
-                            : "text-gray-300"
-                        }`}
-                      />
-                    ))}
-                    <span className="text-xs text-muted-foreground ml-1">
-                      ({bathroom.reviewCount})
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge variant="secondary" className="text-xs">
-                      {bathroom.distance}m
-                    </Badge>
-                    <span className="text-xs font-medium text-primary">
-                      {bathroom.cleanliness}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-xs">
-                    <span
-                      className={`font-medium ${
-                        bathroom.paperSupply === "Bom"
-                          ? "text-green-600"
-                          : bathroom.paperSupply === "Médio"
-                          ? "text-yellow-600"
-                          : "text-red-600"
-                      }`}
-                    >
-                      Papel: {bathroom.paperSupply}
-                    </span>
-                    {bathroom.accessibility && (
-                      <span className="text-green-600 flex items-center gap-1">
-                        <Accessibility className="h-3 w-3" />
-                        Acessível
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </Popup>
+              {/* Popup removed to avoid overlay conflicts with modal */}
             </Marker>
           ))}
       </MapContainer>
 
       {/* Selected bathroom details */}
-      {selectedBathroom && (
+      {selectedBathroom && !isModalOpen && (
         <div className="absolute bottom-4 left-4 right-4 z-[1000]">
           {(() => {
             const bathroom = bathroomsWithCoords.find(
@@ -720,26 +839,75 @@ ${editableBathrooms
         </div>
       )}
 
-      {/* Instructions */}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-background/90 backdrop-blur-sm rounded-lg px-3 py-2 text-xs text-center z-[1000]">
+      {/* Coachmark overlay to make it obvious to tap a pin */}
+      {showTouchHint && !isEditMode && !isModalOpen && (
+        <div className="absolute inset-0 z-[1100] pointer-events-none">
+          {/* dim background (no pointer events to keep map clickable) */}
+          <div className="absolute inset-0 bg-black/30 pointer-events-none" />
+          {/* floating pill */}
+          <div className="absolute left-1/2 -translate-x-1/2 bottom-16 sm:bottom-20 pointer-events-auto">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/95 dark:bg-gray-900/95 border border-gray-200/60 dark:border-gray-700/60 shadow-xl">
+              <span className="text-base">👆</span>
+              <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-200">
+                Toque num pin para avaliar
+              </span>
+              <button
+                className="text-xs px-2 py-1 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+                onClick={() => {
+                  try {
+                    localStorage.setItem("map_hint_v1", "1");
+                  } catch {}
+                  setShowTouchHint(false);
+                }}
+              >
+                Entendi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Simplified Instructions for Mobile */}
+      <div className="absolute bottom-2 left-2 right-2 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-lg px-2 py-1 text-[9px] leading-tight z-[800] border border-gray-200/30 dark:border-gray-700/30 shadow-md">
         {isEditMode ? (
-          selectedEditBathroom ? (
-            <>
-              🎯 <strong>Casa de banho selecionada!</strong> Agora clique no
-              mapa onde a quer colocar • ❌ Clique "Cancelar" para desselecionar
-            </>
-          ) : (
-            <>
-              ✏️ <strong>MODO EDIÇÃO:</strong> 1️⃣ Clique numa casa de banho no
-              mapa • 2️⃣ Clique onde a quer colocar • 💾 Guardar quando terminar
-            </>
-          )
+          <div className="w-full text-center">
+            {selectedEditBathroom ? (
+              <span className="text-green-600 font-medium">
+                🎯 Clique no mapa para reposicionar
+              </span>
+            ) : (
+              <span className="text-orange-600 font-medium">
+                ✏️ Clique numa casa de banho
+              </span>
+            )}
+          </div>
         ) : (
-          <>
-            📍 Localização • 🔄 Reset • 🔍 Filtros • ✏️ Editar • 📌 Clique nos
-            pins para detalhes • {filteredBathrooms.length}/{bathrooms.length}{" "}
-            casas de banho
-          </>
+          <div className="flex items-center justify-between gap-2 text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <span className="text-primary font-medium">
+                {(filteredBathrooms || internalFilteredBathrooms).length}/
+                {bathrooms.length}
+              </span>
+              <span>casas de banho</span>
+            </div>
+            {showTouchHint && (
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/50 shadow-sm"
+                onClick={() => {
+                  try {
+                    localStorage.setItem("map_hint_v1", "1");
+                  } catch (_) {}
+                  setShowTouchHint(false);
+                }}
+                title="Dica"
+              >
+                <span className="animate-pulse">👆</span>
+                <span className="hidden sm:inline">Toque num pin</span>
+                <span className="sm:hidden">Toque num pin</span>
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

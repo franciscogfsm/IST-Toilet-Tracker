@@ -376,8 +376,9 @@ export function InteractiveMap({ onBathroomSelect }: InteractiveMapProps) {
                   selectedBathroom === bathroom.id ? "scale-140" : ""
                 }`}
                 onClick={() => handleBathroomClick(bathroom)}
-                onMouseEnter={() => setHoveredBathroom(bathroom.id)}
-                onMouseLeave={() => setHoveredBathroom(null)}
+                // Hover events disabled to prevent tooltip conflicts with modal
+                // onMouseEnter={() => setHoveredBathroom(bathroom.id)}
+                // onMouseLeave={() => setHoveredBathroom(null)}
               >
                 <div
                   className={`w-10 h-10 ${getBathroomColor(
@@ -401,8 +402,8 @@ export function InteractiveMap({ onBathroomSelect }: InteractiveMapProps) {
                   </div>
                 )}
 
-                {/* Enhanced Hover tooltip */}
-                {hoveredBathroom === bathroom.id && (
+                {/* Enhanced Hover tooltip - Disabled to prevent overlay conflicts with modal */}
+                {false && hoveredBathroom === bathroom.id && (
                   <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 z-30">
                     <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-xl min-w-[240px]">
                       <h3 className="font-semibold text-sm mb-1">

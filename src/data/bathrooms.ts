@@ -7,6 +7,7 @@ export interface Review {
   cleanliness: number;
   paperSupply: number;
   privacy: number;
+  paperAvailable?: boolean;
 }
 
 export interface Bathroom {
@@ -38,6 +39,7 @@ export interface Review {
   cleanliness: number;
   paperSupply: number;
   privacy: number;
+  paperAvailable?: boolean;
 }
 
 export interface Bathroom {
@@ -787,6 +789,49 @@ export const bathrooms: Bathroom[] = [
     paperSupply: "Fraco",
     privacy: "Média",
     lastCleaned: "5 horas atrás",
+    reviews: [],
+  },
+  // Added: Pavilhão Central bathrooms (missing previously)
+  {
+    id: "pavilhao_central_-1",
+    name: "Casa de banho do Pavilhão Central Piso -1",
+    building: "Pavilhão Central",
+    distance: 62,
+    rating: 4.0,
+    reviewCount: 0,
+    cleanliness: "Geralmente limpo",
+    x: 52.4,
+    y: 51.8,
+    floor: "-1",
+    facilities: ["Papel higiénico", "Sabão", "Toalhas de papel", "Espelho"],
+    accessibility: false,
+    paperSupply: "Médio",
+    privacy: "Boa",
+    lastCleaned: "2 horas atrás",
+    reviews: [],
+  },
+  {
+    id: "pavilhao_central_0",
+    name: "Casa de banho do Pavilhão Central",
+    building: "Pavilhão Central",
+    distance: 60,
+    rating: 4.1,
+    reviewCount: 0,
+    cleanliness: "Sempre limpo",
+    x: 52.0,
+    y: 52.0,
+    floor: "0",
+    facilities: [
+      "Papel higiénico",
+      "Sabão",
+      "Toalhas de papel",
+      "Espelho",
+      "Secador de mãos",
+    ],
+    accessibility: false,
+    paperSupply: "Bom",
+    privacy: "Boa",
+    lastCleaned: "1 hora atrás",
     reviews: [],
   },
 ];

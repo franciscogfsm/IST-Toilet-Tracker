@@ -41,7 +41,7 @@ export function BathroomFilters({
   onFilterChange,
   allBathrooms,
 }: BathroomFiltersProps) {
-  const [selectedFloor, setSelectedFloor] = useState<string | null>(null);
+  const [selectedFloor, setSelectedFloor] = useState<string | null>("0"); // Default to ground floor
   const [selectedBuilding, setSelectedBuilding] = useState<string | null>(null);
   const [showAccessibleOnly, setShowAccessibleOnly] = useState(false);
 
@@ -103,7 +103,31 @@ export function BathroomFilters({
         )}
       </div>
 
-      <Accordion type="single" collapsible className="space-y-2">
+      {/* Helper text */}
+      <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+        <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
+          💡 <strong>Dica:</strong> Use os filtros por piso para evitar
+          sobreposição das casas de banho no mapa!
+        </p>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            setSelectedFloor("0");
+            setTimeout(applyFilters, 0);
+          }}
+          className="h-6 text-xs"
+        >
+          🏢 Mostrar só R/C
+        </Button>
+      </div>
+
+      <Accordion
+        type="single"
+        collapsible
+        defaultValue="floor"
+        className="space-y-2"
+      >
         {/* Floor Filter */}
         <AccordionItem value="floor" className="border rounded-lg">
           <AccordionTrigger className="px-3 py-2 hover:no-underline">
@@ -121,6 +145,8 @@ export function BathroomFilters({
             <div className="grid grid-cols-3 gap-2">
               {floors.map((floor) => {
                 const count = getBathroomsByFloor(floor).length;
+                const isNegative = parseInt(floor) < 0;
+                const isGround = floor === "0";
                 return (
                   <Button
                     key={floor}
@@ -131,15 +157,28 @@ export function BathroomFilters({
                       setSelectedFloor(newFloor);
                       setTimeout(applyFilters, 0);
                     }}
-                    className="h-8 text-xs justify-between"
+                    className={`h-8 text-xs justify-between ${
+                      selectedFloor === floor
+                        ? ""
+                        : isNegative
+                        ? "border-red-200 hover:border-red-300 text-red-700 dark:text-red-400"
+                        : isGround
+                        ? "border-green-200 hover:border-green-300 text-green-700 dark:text-green-400"
+                        : "border-blue-200 hover:border-blue-300 text-blue-700 dark:text-blue-400"
+                    }`}
                   >
-                    <span>{floor}</span>
+                    <span>{floor === "0" ? "R/C" : floor}</span>
                     <Badge variant="secondary" className="text-xs ml-1">
                       {count}
                     </Badge>
                   </Button>
                 );
               })}
+            </div>
+            <div className="mt-2 text-xs text-muted-foreground">
+              <span className="text-red-600">Caves</span> •{" "}
+              <span className="text-green-600">R/C</span> •{" "}
+              <span className="text-blue-600">Pisos</span>
             </div>
           </AccordionContent>
         </AccordionItem>
