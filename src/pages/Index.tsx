@@ -507,27 +507,25 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-100/40">
       {/* Modern Header */}
-      <header className="sticky top-0 z-50 bg-white/90 supports-[backdrop-filter]:backdrop-blur-xl border-b border-gray-200/40 shadow-lg shadow-black/5">
+      <header className="sticky top-0 z-50 bg-gradient-to-r from-white/95 via-blue-50/90 to-cyan-50/95 supports-[backdrop-filter]:backdrop-blur-xl border-b border-blue-200/40 shadow-lg shadow-blue-500/10">
+        {/* Decorative gradient bars */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-600"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-300/50 to-transparent"></div>
+
         <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             {/* Logo and Brand */}
             <div className="flex items-center gap-3 sm:gap-4">
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full blur-lg opacity-30"></div>
                 <img
                   src="/Imagem2.png"
                   alt="WC do Técnico"
-                  className="relative w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full shadow-xl border-2 border-white/60 ring-2 ring-blue-500/20 hover:ring-blue-500/40 transition-transform duration-200 hover:scale-105"
+                  className="w-11 h-11 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full shadow-lg border-2 border-white/90 transition-transform duration-200 hover:scale-105"
                 />
               </div>
-              <div className="space-y-0.5 sm:space-y-1">
-                <h1 className="text-lg sm:text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-blue-600 via-sky-600 to-cyan-600 bg-clip-text text-transparent tracking-tight">
-                  IST Toilet Tracker
-                </h1>
-                <p className="text-[10px] sm:text-xs font-medium text-gray-500 bg-gradient-to-r from-gray-600 to-gray-500 bg-clip-text text-transparent">
-                  Instituto Superior Técnico
-                </p>
-              </div>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent tracking-tight">
+                IST Toilet Tracker
+              </h1>
             </div>
 
             {/* Navigation Pills - Desktop only */}
@@ -570,10 +568,10 @@ const Index = () => {
             <Button
               variant="outline"
               size="sm"
-              className="rounded-full border-gray-200/60 bg-white/70 supports-[backdrop-filter]:backdrop-blur hover:bg-white hover:shadow-md transition-all duration-150 p-2.5"
+              className="rounded-full border-blue-200/50 bg-gradient-to-r from-white/80 to-blue-50/60 supports-[backdrop-filter]:backdrop-blur hover:from-blue-50/80 hover:to-cyan-50/70 hover:shadow-lg hover:scale-105 transition-all duration-200 p-2.5 ring-1 ring-blue-500/10 hover:ring-blue-500/20"
               onClick={() => setIsMenuOpen(true)}
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-5 w-5 text-blue-600" />
             </Button>
           </div>
         </div>
