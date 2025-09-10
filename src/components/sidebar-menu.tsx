@@ -5,7 +5,6 @@ import {
   Map,
   Star,
   Info,
-  Settings,
   Github,
   Heart,
   Mail,
@@ -49,12 +48,6 @@ export function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
       label: "Sobre",
       href: "#about",
       description: "Informações do projeto",
-    },
-    {
-      icon: Settings,
-      label: "Definições",
-      href: "/settings",
-      description: "Configurações do app",
     },
   ];
 

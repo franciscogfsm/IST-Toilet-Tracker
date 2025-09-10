@@ -9,6 +9,7 @@ import {
   MessageCircle,
   ChevronUp,
   Github,
+  Navigation,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +30,6 @@ import { BathroomDetails } from "@/components/bathroom-details";
 import { SidebarMenu } from "@/components/sidebar-menu";
 import { bathrooms, Bathroom, Review } from "@/data/bathrooms";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useUserSettings } from "@/hooks/use-user-settings";
 import { Suspense, lazy } from "react";
 
 // Lazy-load MapWithFilters for performance
@@ -57,7 +57,13 @@ const Index = () => {
   const aboutRef = useRef<HTMLDivElement | null>(null);
   const [aboutVisible, setAboutVisible] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
-  const { settings } = useUserSettings();
+  const settings = {
+    showDistanceOffCampus: false,
+    defaultFloor: "0" as string | null, // R/C default
+  };
+
+  // Consistent header offset for scroll calculations (avoid mismatched 72 vs 80)
+  const HEADER_OFFSET = 80; // px
 
   // Derived pickers for review selector
   const buildings = Array.from(
@@ -81,7 +87,7 @@ const Index = () => {
   const scrollToMap = () => {
     const el = document.getElementById("map");
     if (!el) return;
-    const headerOffset = 72;
+    const headerOffset = HEADER_OFFSET;
     const rect = el.getBoundingClientRect();
     const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
     const top = rect.top + scrollTop - headerOffset;
@@ -126,41 +132,46 @@ const Index = () => {
     return Math.round(R * c);
   };
 
-  // User location state for dynamic distance when user is near IST
+  // Location / proximity state
   const [userLocation, setUserLocation] = useState<[number, number] | null>(
     null
   );
   const [isNearIST, setIsNearIST] = useState(false);
+  const [locationStatus, setLocationStatus] = useState<
+    "idle" | "requesting" | "enabled" | "denied" | "far"
+  >("idle");
 
-  useEffect(() => {
-    if (!navigator.geolocation) return;
+  const requestLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationStatus("denied");
+      return;
+    }
+    setLocationStatus("requesting");
     const timeout = setTimeout(() => {
-      // Fail silently if slow
-    }, 10000);
+      if (locationStatus === "requesting") setLocationStatus("denied");
+    }, 12000);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         clearTimeout(timeout);
         const { latitude, longitude } = pos.coords;
-        const tolerance = 0.005; // ~500m
+        const tolerance = 0.005; // ~500m (~550m) radius around campus bounds
         const near =
           latitude >= IST_BOUNDS[0][0] - tolerance &&
           latitude <= IST_BOUNDS[1][0] + tolerance &&
           longitude >= IST_BOUNDS[0][1] - tolerance &&
           longitude <= IST_BOUNDS[1][1] + tolerance;
-        if (near) {
-          setUserLocation([latitude, longitude]);
-          setIsNearIST(true);
-        } else {
-          setIsNearIST(false);
-        }
+        setUserLocation([latitude, longitude]);
+        setIsNearIST(near);
+        setLocationStatus(near ? "enabled" : "far");
       },
       () => {
         clearTimeout(timeout);
         setIsNearIST(false);
+        setLocationStatus("denied");
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
-  }, []);
+  };
 
   // Reveal animations for the About section
   useEffect(() => {
@@ -212,7 +223,8 @@ const Index = () => {
   ): (Bathroom & {
     dynamicDistance?: number;
   })[] => {
-    if (!isNearIST || !userLocation) return list.map((b) => ({ ...b }));
+    if (!(isNearIST && userLocation && locationStatus === "enabled"))
+      return list.map((b) => ({ ...b }));
     return list.map((b) => {
       const [lat, lng] = convertToRealCoords(b.x, b.y);
       const d = calculateDistance(userLocation[0], userLocation[1], lat, lng);
@@ -372,10 +384,79 @@ const Index = () => {
     }
   };
 
+  // Active top pill state
+  const [activeTopTab, setActiveTopTab] = useState<"map" | "reviews" | "stats">(
+    "map"
+  );
+  // Suppress scroll-based auto detection while a programmatic smooth scroll is in progress
+  const manualScrollSuppressRef = useRef<number>(0);
+
+  const scrollToSection = (id: string, tab: "map" | "reviews" | "stats") => {
+    const el = document.getElementById(id);
+    if (el) {
+      const headerOffset = HEADER_OFFSET;
+      const rect = el.getBoundingClientRect();
+      const scrollTop =
+        window.pageYOffset || document.documentElement.scrollTop;
+      const top = rect.top + scrollTop - headerOffset;
+      // mark suppression window (~900ms) to avoid flicker (map->reviews->map)
+      manualScrollSuppressRef.current = Date.now() + 900;
+      window.scrollTo({ top, behavior: "smooth" });
+      setActiveTopTab(tab);
+    }
+  };
+
+  // Scroll listener to set active tab based on current scroll position
+  useEffect(() => {
+    const headerOffset = HEADER_OFFSET;
+    const sectionIds: Array<[string, "map" | "reviews" | "stats"]> = [
+      ["map", "map"],
+      ["reviews", "reviews"],
+      ["stats", "stats"],
+    ];
+
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          // Ignore scroll-driven recalculation while within suppression window
+          if (Date.now() < manualScrollSuppressRef.current) {
+            ticking = false;
+            return;
+          }
+          // Use midpoint of viewport for more stable detection
+          const scrollMid = window.scrollY + window.innerHeight / 3;
+          let current: "map" | "reviews" | "stats" = "map";
+          for (let i = 0; i < sectionIds.length; i++) {
+            const [id, tab] = sectionIds[i];
+            const el = document.getElementById(id);
+            if (!el) continue;
+            const top = el.offsetTop - headerOffset - 4; // small fudge
+            const nextElId = sectionIds[i + 1]?.[0];
+            const nextEl = nextElId ? document.getElementById(nextElId) : null;
+            const nextTop = nextEl ? nextEl.offsetTop - headerOffset : Infinity;
+            if (scrollMid >= top && scrollMid < nextTop) {
+              current = tab;
+              break;
+            }
+            if (scrollMid >= nextTop) continue;
+          }
+          setActiveTopTab(current);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-100/40 dark:from-gray-950 dark:via-gray-900 dark:to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-100/40">
       {/* Modern Header */}
-      <header className="sticky top-0 z-50 bg-white/90 dark:bg-gray-950/85 supports-[backdrop-filter]:backdrop-blur-xl border-b border-gray-200/40 dark:border-gray-700/40 shadow-lg shadow-black/5">
+      <header className="sticky top-0 z-50 bg-white/90 supports-[backdrop-filter]:backdrop-blur-xl border-b border-gray-200/40 shadow-lg shadow-black/5">
         <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             {/* Logo and Brand */}
@@ -385,14 +466,14 @@ const Index = () => {
                 <img
                   src="/Imagem2.png"
                   alt="WC do Técnico"
-                  className="relative w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full shadow-xl border-2 border-white/60 dark:border-gray-800/60 ring-2 ring-blue-500/20 hover:ring-blue-500/40 transition-transform duration-200 hover:scale-105"
+                  className="relative w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full shadow-xl border-2 border-white/60 ring-2 ring-blue-500/20 hover:ring-blue-500/40 transition-transform duration-200 hover:scale-105"
                 />
               </div>
               <div className="space-y-0.5 sm:space-y-1">
-                <h1 className="text-lg sm:text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-blue-600 via-sky-600 to-cyan-600 dark:from-blue-400 dark:via-sky-400 dark:to-cyan-400 bg-clip-text text-transparent tracking-tight">
+                <h1 className="text-lg sm:text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-blue-600 via-sky-600 to-cyan-600 bg-clip-text text-transparent tracking-tight">
                   IST Toilet Tracker
                 </h1>
-                <p className="text-[10px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 bg-gradient-to-r from-gray-600 to-gray-500 dark:from-gray-400 dark:to-gray-500 bg-clip-text text-transparent">
+                <p className="text-[10px] sm:text-xs font-medium text-gray-500 bg-gradient-to-r from-gray-600 to-gray-500 bg-clip-text text-transparent">
                   Instituto Superior Técnico
                 </p>
               </div>
@@ -400,14 +481,35 @@ const Index = () => {
 
             {/* Navigation Pills - Desktop only */}
             <div className="hidden lg:flex items-center gap-2">
-              <div className="flex items-center gap-1 bg-gray-100/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full p-1.5 border border-gray-200/50 dark:border-gray-700/50 shadow-md">
-                <button className="px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105">
+              <div className="flex items-center gap-1 bg-gray-100/80 backdrop-blur-sm rounded-full p-1.5 border border-gray-200/50 shadow-md">
+                <button
+                  onClick={() => scrollToSection("map", "map")}
+                  className={`px-5 py-2.5 text-sm font-medium rounded-full shadow transition-all duration-200 ${
+                    activeTopTab === "map"
+                      ? "text-white bg-gradient-to-r from-blue-500 to-cyan-500 shadow-lg hover:shadow-xl hover:scale-105"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-white/70"
+                  }`}
+                >
                   Mapa
                 </button>
-                <button className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white/70 dark:hover:bg-gray-700/70 rounded-full transition-all duration-200">
+                <button
+                  onClick={() => scrollToSection("reviews", "reviews")}
+                  className={`px-5 py-2.5 text-sm font-medium rounded-full transition-all duration-200 ${
+                    activeTopTab === "reviews"
+                      ? "text-white bg-gradient-to-r from-blue-500 to-cyan-500 shadow-lg hover:shadow-xl hover:scale-105"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-white/70"
+                  }`}
+                >
                   Reviews
                 </button>
-                <button className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white/70 dark:hover:bg-gray-700/70 rounded-full transition-all duration-200">
+                <button
+                  onClick={() => scrollToSection("stats", "stats")}
+                  className={`px-5 py-2.5 text-sm font-medium rounded-full transition-all duration-200 ${
+                    activeTopTab === "stats"
+                      ? "text-white bg-gradient-to-r from-blue-500 to-cyan-500 shadow-lg hover:shadow-xl hover:scale-105"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-white/70"
+                  }`}
+                >
                   Stats
                 </button>
               </div>
@@ -417,7 +519,7 @@ const Index = () => {
             <Button
               variant="outline"
               size="sm"
-              className="rounded-full border-gray-200/60 dark:border-gray-700/60 bg-white/70 dark:bg-gray-900/70 supports-[backdrop-filter]:backdrop-blur hover:bg-white dark:hover:bg-gray-800 hover:shadow-md transition-all duration-150 p-2.5"
+              className="rounded-full border-gray-200/60 bg-white/70 supports-[backdrop-filter]:backdrop-blur hover:bg-white hover:shadow-md transition-all duration-150 p-2.5"
               onClick={() => setIsMenuOpen(true)}
             >
               <Menu className="h-5 w-5" />
@@ -426,7 +528,7 @@ const Index = () => {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
+      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-28 lg:pb-8 space-y-6 sm:space-y-8">
         {/* Back to top */}
         {showBackToTop && (
           <button
@@ -484,6 +586,48 @@ const Index = () => {
 
         {/* Quick Stats (compact) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+          {/* Location prompt / status (mobile first row if not enabled) */}
+          {locationStatus !== "enabled" && (
+            <Card className="md:hidden border-dashed border-2 border-blue-300/60 bg-blue-50/60 backdrop-blur-sm hover:shadow-md transition-all">
+              <CardContent className="p-4 flex flex-col gap-2 text-center">
+                <div className="flex items-center justify-center gap-2 text-blue-700 font-semibold text-sm">
+                  <Navigation className="h-4 w-4" /> Distâncias em tempo real
+                </div>
+                {locationStatus === "idle" && (
+                  <>
+                    <p className="text-xs text-blue-700/80">
+                      Ative a localização (≤500m do IST) para ordenar pela
+                      distância exata.
+                    </p>
+                    <Button
+                      size="sm"
+                      className="mx-auto bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700"
+                      onClick={requestLocation}
+                    >
+                      Ativar localização
+                    </Button>
+                  </>
+                )}
+                {locationStatus === "requesting" && (
+                  <p className="text-xs animate-pulse text-blue-600">
+                    A obter localização...
+                  </p>
+                )}
+                {locationStatus === "denied" && (
+                  <p className="text-xs text-red-600">
+                    Permissão negada. Ative o acesso à localização nas
+                    definições do navegador.
+                  </p>
+                )}
+                {locationStatus === "far" && (
+                  <p className="text-xs text-gray-600">
+                    Está fora da área do campus. Distâncias em tempo real serão
+                    ativadas quando estiver perto (≤500m).
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
           <Card className="border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-blue-50/70 to-indigo-100/50 dark:from-blue-950/20 dark:to-indigo-900/10 backdrop-blur-sm shadow-md hover:shadow-lg transition-all">
             <CardContent className="p-4 text-center">
               <div className="w-9 h-9 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center mx-auto mb-2.5 shadow-md">
@@ -492,7 +636,7 @@ const Index = () => {
               <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 mb-0.5">
                 Casa de banho mais próxima
               </p>
-              {isNearIST ? (
+              {isNearIST && locationStatus === "enabled" ? (
                 <p className="text-base font-extrabold text-blue-600 dark:text-blue-400 tracking-tight">
                   {sortedBathrooms[0]?.dynamicDistance ??
                     sortedBathrooms[0]?.distance ??
@@ -504,9 +648,21 @@ const Index = () => {
                   {sortedBathrooms[0]?.distance ?? 0}m
                 </p>
               ) : (
-                <p className="text-sm font-semibold text-muted-foreground">
-                  Fora do campus
-                </p>
+                <div className="flex flex-col gap-0.5 items-center">
+                  <p className="text-sm font-semibold text-muted-foreground">
+                    {locationStatus === "far" || !isNearIST
+                      ? "Fora do campus"
+                      : "Localização inativa"}
+                  </p>
+                  {locationStatus === "idle" && (
+                    <button
+                      onClick={requestLocation}
+                      className="text-[11px] text-blue-600 underline"
+                    >
+                      Ativar
+                    </button>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>
@@ -551,7 +707,7 @@ const Index = () => {
                 Casa de banho mais próxima
               </h2>
             </div>
-            {isNearIST ? (
+            {isNearIST && locationStatus === "enabled" ? (
               <>
                 <div className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-3 px-3 py-1 bg-blue-50 dark:bg-blue-950/50 rounded-full inline-block">
                   📍{" "}
@@ -562,7 +718,7 @@ const Index = () => {
                 <BathroomCard
                   {...sortedBathrooms[0]}
                   distance={
-                    isNearIST
+                    isNearIST && locationStatus === "enabled"
                       ? sortedBathrooms[0].dynamicDistance ??
                         sortedBathrooms[0].distance
                       : undefined
@@ -581,69 +737,11 @@ const Index = () => {
           </div>
         )}
 
-        {/* Top Bathrooms */}
-        <div className="space-y-4 scroll-mt-24" id="top">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full flex items-center justify-center shadow-md">
-              <Star className="h-4 w-4 text-white" />
-            </div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-              Top 5 casas de banho do IST
-            </h2>
-          </div>
-          <div className="space-y-3" ref={topListRef}>
-            {topBathrooms.map((bathroom, index) => {
-              // Prefer dynamic distance on campus for display inside the card
-              // Show distance only when near IST; prefer dynamic value
-              const displayDistance = isNearIST
-                ? bathroom.dynamicDistance ?? bathroom.distance
-                : showOffCampusDistance
-                ? bathroom.distance
-                : undefined;
-              const rankStyles =
-                index === 0
-                  ? "from-yellow-400 to-yellow-500 ring-yellow-300"
-                  : index === 1
-                  ? "from-gray-300 to-gray-400 ring-gray-200"
-                  : index === 2
-                  ? "from-orange-400 to-orange-500 ring-orange-300"
-                  : "from-blue-400 to-blue-500";
-
-              return (
-                <div
-                  key={bathroom.id}
-                  data-top-item
-                  data-index={index}
-                  className={
-                    "relative p-3 sm:p-4 bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm rounded-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-md transition-all duration-500 " +
-                    (visibleTopIndices.has(index)
-                      ? "opacity-100 translate-y-0 hover:shadow-lg"
-                      : "opacity-0 translate-y-3")
-                  }
-                  style={{ transitionDelay: `${index * 60}ms` }}
-                >
-                  {/* Rank badge */}
-                  <div
-                    className={`absolute -left-3 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold shadow-lg bg-gradient-to-r ${rankStyles} text-white ring-2`}
-                  >
-                    {index + 1}
-                  </div>
-                  {/* Content */}
-                  <div className="pl-6 sm:pl-8">
-                    <BathroomCard
-                      {...bathroom}
-                      distance={displayDistance}
-                      onViewDetails={() => handleViewBathroomDetails(bathroom)}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
         {/* Enhanced Review Button */}
-        <Card className="border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-blue-50/80 to-cyan-100/60 dark:from-blue-950/20 dark:to-cyan-900/10 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+        <Card
+          id="reviews"
+          className="border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-blue-50/80 to-cyan-100/60 dark:from-blue-950/20 dark:to-cyan-900/10 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] scroll-mt-24"
+        >
           <CardContent className="p-6 text-center">
             <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl">
               <Sparkles className="h-8 w-8 text-white" />
@@ -784,6 +882,63 @@ const Index = () => {
             </p>
           </CardContent>
         </Card>
+
+        {/* Top Bathrooms (moved below Reviews to match tab order) */}
+        <div className="space-y-4 scroll-mt-24" id="stats">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full flex items-center justify-center shadow-md">
+              <Star className="h-4 w-4 text-white" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              Top 5 casas de banho do IST
+            </h2>
+          </div>
+          <div className="space-y-3" ref={topListRef}>
+            {topBathrooms.map((bathroom, index) => {
+              const displayDistance = isNearIST
+                ? bathroom.dynamicDistance ?? bathroom.distance
+                : showOffCampusDistance
+                ? bathroom.distance
+                : undefined;
+              const rankStyles =
+                index === 0
+                  ? "from-yellow-400 to-yellow-500 ring-yellow-300"
+                  : index === 1
+                  ? "from-gray-300 to-gray-400 ring-gray-200"
+                  : index === 2
+                  ? "from-orange-400 to-orange-500 ring-orange-300"
+                  : "from-blue-400 to-blue-500";
+
+              return (
+                <div
+                  key={bathroom.id}
+                  data-top-item
+                  data-index={index}
+                  className={
+                    "relative p-3 sm:p-4 bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm rounded-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-md transition-all duration-500 " +
+                    (visibleTopIndices.has(index)
+                      ? "opacity-100 translate-y-0 hover:shadow-lg"
+                      : "opacity-0 translate-y-3")
+                  }
+                  style={{ transitionDelay: `${index * 60}ms` }}
+                >
+                  <div
+                    className={`absolute -left-3 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold shadow-lg bg-gradient-to-r ${rankStyles} text-white ring-2`}
+                  >
+                    {index + 1}
+                  </div>
+                  <div className="pl-6 sm:pl-8">
+                    <BathroomCard
+                      {...bathroom}
+                      distance={displayDistance}
+                      onViewDetails={() => handleViewBathroomDetails(bathroom)}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Review Form Modal */}
         {showReviewForm && (
@@ -936,6 +1091,46 @@ const Index = () => {
         {/* Sidebar Menu */}
         <SidebarMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
       </div>
+
+      {/* Bottom Mobile Nav */}
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 pb-safe pointer-events-none">
+        <div className="mx-auto max-w-md px-4 pb-4 pt-2 pointer-events-auto">
+          <div className="flex justify-around items-stretch bg-white/90 backdrop-blur-md border border-gray-200/60 shadow-xl shadow-black/5 rounded-2xl p-1">
+            {(
+              [
+                { id: "map", label: "Mapa", icon: Map },
+                { id: "reviews", label: "Reviews", icon: Star },
+                { id: "stats", label: "Stats", icon: TrendingUp },
+              ] as const
+            ).map((item) => {
+              const Icon = item.icon;
+              const active = activeTopTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => scrollToSection(item.id, item.id as any)}
+                  className={`flex-1 group relative overflow-hidden rounded-xl px-3 py-2 flex flex-col items-center justify-center gap-1 text-[11px] font-medium transition-all duration-300 ${
+                    active
+                      ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-white"
+                  }`}
+                  aria-label={item.label}
+                >
+                  <Icon
+                    className={`h-5 w-5 transition-transform duration-300 ${
+                      active ? "scale-110" : "group-hover:scale-110"
+                    }`}
+                  />
+                  <span>{item.label}</span>
+                  {active && (
+                    <span className="absolute inset-0 -z-10 opacity-40 bg-gradient-to-r from-blue-500/40 to-cyan-500/40" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </nav>
     </div>
   );
 };

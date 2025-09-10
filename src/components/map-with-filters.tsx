@@ -14,7 +14,7 @@ export function MapWithFilters({
   onBathroomSelect,
   bathroomData = bathrooms,
   isModalOpen = false,
-  defaultFloor = null,
+  defaultFloor = "0",
 }: MapWithFiltersProps) {
   const [filteredBathrooms, setFilteredBathrooms] = useState<Bathroom[]>(() => {
     if (defaultFloor && bathroomData.some((b) => b.floor === defaultFloor)) {
@@ -61,7 +61,7 @@ interface CompactBathroomFiltersProps {
 function CompactBathroomFilters({
   onFilterChange,
   allBathrooms,
-  defaultFloor = null,
+  defaultFloor = "0",
 }: CompactBathroomFiltersProps) {
   const initialFloor =
     defaultFloor && allBathrooms.some((b) => b.floor === defaultFloor)

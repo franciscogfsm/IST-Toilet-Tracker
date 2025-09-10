@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
 export type UserSettings = {
-  theme: "system" | "light" | "dark";
   reduceMotion: boolean;
   defaultFloor: string | null; // e.g., "0", "1", "-1" or null for all
   showDistanceOffCampus: boolean;
@@ -10,7 +9,6 @@ export type UserSettings = {
 const STORAGE_KEY = "ist_toilet_settings_v1";
 
 const defaultSettings: UserSettings = {
-  theme: "system",
   reduceMotion: false,
   defaultFloor: "0",
   showDistanceOffCampus: false,
