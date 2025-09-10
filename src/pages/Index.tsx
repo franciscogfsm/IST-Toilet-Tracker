@@ -173,6 +173,57 @@ const Index = () => {
     );
   };
 
+  // Auto ask for location once when the map first becomes visible
+  const autoPromptedRef = useRef(false);
+  useEffect(() => {
+    if (locationStatus !== "idle" || autoPromptedRef.current) return;
+    // Avoid re-prompting across sessions (v1 key)
+    if (
+      typeof window !== "undefined" &&
+      localStorage.getItem("geo_prompted_v1")
+    ) {
+      autoPromptedRef.current = true;
+      return;
+    }
+
+    const mapEl = document.getElementById("map");
+    if (!mapEl) return; // map not yet mounted
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !autoPromptedRef.current) {
+            autoPromptedRef.current = true;
+            try {
+              localStorage.setItem("geo_prompted_v1", "1");
+            } catch {}
+            requestLocation();
+            observer.disconnect();
+          }
+        });
+      },
+      { threshold: 0.4 }
+    );
+    observer.observe(mapEl);
+    return () => observer.disconnect();
+  }, [locationStatus]);
+
+  // If permission already granted (user previously accepted), trigger immediately without waiting for visibility
+  useEffect(() => {
+    if (locationStatus !== "idle" || autoPromptedRef.current) return;
+    if ("permissions" in navigator && (navigator as any).permissions?.query) {
+      (navigator as any).permissions
+        .query({ name: "geolocation" as PermissionName })
+        .then((res: any) => {
+          if (res.state === "granted") {
+            autoPromptedRef.current = true;
+            requestLocation();
+          }
+        })
+        .catch(() => {});
+    }
+  }, [locationStatus]);
+
   // Reveal animations for the About section
   useEffect(() => {
     if (!aboutRef.current) return;

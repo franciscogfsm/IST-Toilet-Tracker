@@ -203,7 +203,7 @@ export function BathroomDetails({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="p-0 w-[92vw] max-w-[640px] h-[86vh] sm:w-[90vw] sm:max-w-2xl sm:h-[80vh] bg-background/95 supports-[backdrop-filter]:backdrop-blur-md border border-border/60 shadow-2xl rounded-2xl overflow-hidden">
+      <DialogContent className="p-0 w-[85vw] max-w-[480px] max-h-[75vh] sm:w-[60vw] sm:max-w-lg sm:max-h-[70vh] flex flex-col bg-background/95 supports-[backdrop-filter]:backdrop-blur-md border border-border/60 shadow-2xl rounded-xl overflow-hidden">
         {/* Add styles to hide any Leaflet popups when modal is open */}
         {isOpen && (
           <style>
