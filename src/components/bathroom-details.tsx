@@ -97,7 +97,9 @@ export function BathroomDetails({
   const [paperAvailable, setPaperAvailable] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const submissionInProgressRef = useRef(false);
 
   if (!bathroom) return null;
 
@@ -107,7 +109,17 @@ export function BathroomDetails({
       return;
     }
 
-    setIsSubmitting(true);
+    // Prevent multiple submissions using both state and ref
+    if (
+      isSubmittingReview ||
+      showSuccessModal ||
+      submissionInProgressRef.current
+    ) {
+      return;
+    }
+
+    submissionInProgressRef.current = true;
+    setIsSubmittingReview(true);
 
     try {
       await onReviewSubmit(bathroom.id, {
@@ -123,14 +135,23 @@ export function BathroomDetails({
       setReviewRating(0);
       setPaperAvailable(true);
 
-      // Show success feedback
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
+      // Show success modal with faster timing and cool animations
+      setShowSuccessModal(true);
+
+      // Auto-close success modal after 2 seconds (faster than before)
+      setTimeout(() => {
+        setShowSuccessModal(false);
+        // Close main modal after success modal closes with shorter delay
+        setTimeout(() => {
+          onClose();
+        }, 200); // Faster transition
+      }, 2000);
     } catch (error) {
       console.error("Erro ao enviar avaliação:", error);
       alert("Erro ao enviar avaliação. Tente novamente.");
     } finally {
-      setIsSubmitting(false);
+      setIsSubmittingReview(false);
+      submissionInProgressRef.current = false;
     }
   };
 
@@ -144,6 +165,11 @@ export function BathroomDetails({
   // Clean up Leaflet styles when modal closes
   useEffect(() => {
     if (!isOpen) {
+      // Reset all submission-related state when main modal closes
+      setShowSuccessModal(false);
+      setIsSubmittingReview(false);
+      submissionInProgressRef.current = false;
+
       // Remove any inline styles that might have been added
       const leafletContainers = document.querySelectorAll(".leaflet-container");
       leafletContainers.forEach((container) => {
@@ -223,7 +249,7 @@ export function BathroomDetails({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="p-0 w-[92vw] max-w-[480px] max-h-[85vh] sm:w-[70vw] sm:max-w-lg sm:max-h-[80vh] flex flex-col bg-background/95 supports-[backdrop-filter]:backdrop-blur-md border border-border/60 shadow-2xl rounded-xl overflow-hidden overflow-x-hidden bathroom-details-modal">
+      <DialogContent className="p-0 w-[92vw] max-w-[480px] max-h-[85vh] sm:w-[70vw] sm:max-w-lg sm:max-h-[80vh] flex flex-col bg-background/95 supports-[backdrop-filter]:backdrop-blur-md border border-border/60 shadow-2xl rounded-xl overflow-hidden overflow-x-hidden bathroom-details-modal animate-in fade-in zoom-in-95 duration-300 data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95 data-[state=closed]:duration-200">
         {/* Add styles to hide any Leaflet popups when modal is open */}
         {isOpen && (
           <style>
@@ -471,37 +497,37 @@ export function BathroomDetails({
 
           {/* Reviews Section */}
           <div id={reviewsAnchorId}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold flex items-center gap-2 text-gray-900 dark:text-white">
-                <MessageSquare className="h-5 w-5 text-blue-500" />
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold flex items-center gap-1.5 text-gray-900 dark:text-white">
+                <MessageSquare className="h-4 w-4 text-blue-500" />
                 Avaliações
               </h3>
               <Badge
                 variant="outline"
-                className="bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
+                className="text-xs bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
               >
                 {bathroom.reviews?.length || 0}
               </Badge>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               {bathroom.reviews ? (
                 bathroom.reviews.length > 0 ? (
                   <>
                     {(showAllReviews
                       ? bathroom.reviews
-                      : bathroom.reviews.slice(0, 3)
+                      : bathroom.reviews.slice(0, 2)
                     ).map((review) => (
                       <Card
                         key={review.id}
-                        className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow"
+                        className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow"
                       >
-                        <div className="flex items-start gap-3">
-                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
-                            <UserIcon className="h-4 w-4 text-white" />
+                        <div className="flex items-start gap-2">
+                          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                            <UserIcon className="h-3 w-3 text-white" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center justify-between mb-1">
                               <p className="font-medium text-sm text-gray-900 dark:text-white truncate">
                                 {review.user}
                               </p>
@@ -509,36 +535,36 @@ export function BathroomDetails({
                                 {review.date}
                               </span>
                             </div>
-                            <div className="flex items-center gap-2 mb-2">
+                            <div className="flex items-center gap-1 mb-1">
                               {renderStars(review.rating)}
                               <span className="text-xs text-gray-600 dark:text-gray-400">
                                 {review.rating}/5
                               </span>
                             </div>
-                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words">
+                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words line-clamp-2">
                               {review.comment}
                             </p>
                           </div>
                         </div>
                       </Card>
                     ))}
-                    {bathroom.reviews.length > 3 && (
-                      <div className="text-center pt-2">
+                    {bathroom.reviews.length > 2 && (
+                      <div className="text-center pt-1">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => setShowAllReviews(!showAllReviews)}
-                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 transition-colors"
+                          className="text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 transition-colors h-8 px-3"
                         >
                           {showAllReviews ? (
                             <>
-                              <ChevronDown className="h-4 w-4 mr-1 rotate-180" />
+                              <ChevronDown className="h-3 w-3 mr-1 rotate-180" />
                               Ver menos
                             </>
                           ) : (
                             <>
-                              <ChevronDown className="h-4 w-4 mr-1" />
-                              Ver todas ({bathroom.reviews.length})
+                              <ChevronDown className="h-3 w-3 mr-1" />
+                              Ver mais ({bathroom.reviews.length - 2})
                             </>
                           )}
                         </Button>
@@ -546,17 +572,17 @@ export function BathroomDetails({
                     )}
                   </>
                 ) : (
-                  <Card className="p-6 text-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 border-dashed border-blue-200 dark:border-blue-800">
-                    <MessageSquare className="h-8 w-8 text-blue-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <Card className="p-4 text-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 border-dashed border-blue-200 dark:border-blue-800">
+                    <MessageSquare className="h-6 w-6 text-blue-400 mx-auto mb-1" />
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
                       Nenhuma avaliação ainda. Seja o primeiro a avaliar! 🌟
                     </p>
                   </Card>
                 )
               ) : (
-                <div className="space-y-3">
-                  <Skeleton className="h-24 w-full rounded-lg" />
-                  <Skeleton className="h-24 w-full rounded-lg" />
+                <div className="space-y-2">
+                  <Skeleton className="h-16 w-full rounded-lg" />
+                  <Skeleton className="h-16 w-full rounded-lg" />
                 </div>
               )}
             </div>
@@ -578,15 +604,6 @@ export function BathroomDetails({
                   Sua avaliação faz a diferença
                 </p>
               </div>
-
-              {showSuccess && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 w-full overflow-hidden dark:bg-green-900/20 dark:border-green-800">
-                  <p className="text-green-800 dark:text-green-300 text-sm break-words flex items-center gap-2 font-medium">
-                    <Check className="h-4 w-4" />
-                    Obrigado pela avaliação! 🎉
-                  </p>
-                </div>
-              )}
 
               <div className="space-y-4">
                 {/* Quick Actions - Optional but encouraged */}
@@ -672,10 +689,10 @@ export function BathroomDetails({
                 {/* Submit - Only requires rating */}
                 <Button
                   onClick={handleSubmitReview}
-                  disabled={isSubmitting || reviewRating === 0}
+                  disabled={isSubmittingReview || reviewRating === 0}
                   className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
                 >
-                  {isSubmitting ? (
+                  {isSubmittingReview ? (
                     <div className="flex items-center gap-2">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       <span>Enviando...</span>
@@ -711,6 +728,36 @@ export function BathroomDetails({
           </div>
         </div>
       </DialogContent>
+
+      {/* Success Modal */}
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent className="p-0 w-[90vw] max-w-[400px] max-h-[300px] flex flex-col bg-background/95 supports-[backdrop-filter]:backdrop-blur-md border border-border/60 shadow-2xl rounded-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Avaliação Enviada com Sucesso</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center shadow-lg animate-in zoom-in-50 duration-500 delay-100">
+              <Check className="h-8 w-8 text-white animate-in zoom-in-75 duration-300 delay-200" />
+            </div>
+
+            <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                Avaliação enviada! 🎉
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Obrigado por ajudar a comunidade do IST!
+              </p>
+              <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                Sua opinião faz toda a diferença ✨
+              </p>
+            </div>
+
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 overflow-hidden">
+              <div className="bg-gradient-to-r from-purple-500 to-pink-600 h-1 rounded-full animate-in slide-in-from-left-full duration-2000"></div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

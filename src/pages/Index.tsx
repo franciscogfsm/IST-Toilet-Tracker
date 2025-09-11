@@ -412,11 +412,6 @@ const Index = () => {
         return bathroom;
       })
     );
-
-    // Show success message
-    alert(
-      "✨ Avaliação submetida com sucesso! Obrigado por ajudar a comunidade do IST!"
-    );
   };
 
   const handleBathroomSelect = (bathroom: Bathroom | null) => {
