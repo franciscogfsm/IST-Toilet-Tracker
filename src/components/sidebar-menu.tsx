@@ -214,8 +214,19 @@ export function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
                 </span>
               </div>
               <div className="hidden sm:flex items-center justify-center gap-2 text-xs text-muted-foreground/60">
-                <span>Contribuir para o projeto</span>
-                <ExternalLink className="h-3 w-3" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto p-0 text-xs text-muted-foreground/60 hover:text-muted-foreground"
+                  onClick={() =>
+                    handleNavigation(
+                      "https://github.com/franciscogfsm/caganisto"
+                    )
+                  }
+                >
+                  Contribuir para o projeto
+                  <ExternalLink className="h-3 w-3 ml-1" />
+                </Button>
               </div>
             </div>
           </div>

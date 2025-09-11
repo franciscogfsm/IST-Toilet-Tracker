@@ -507,56 +507,62 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-100/40">
       {/* Modern Header */}
-      <header className="sticky top-0 z-50 bg-gradient-to-r from-white/95 via-blue-50/90 to-cyan-50/95 supports-[backdrop-filter]:backdrop-blur-xl border-b border-blue-200/40 shadow-lg shadow-blue-500/10">
-        {/* Decorative gradient bars */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-600"></div>
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-300/50 to-transparent"></div>
+      <header className="sticky top-0 z-50 bg-white/95 supports-[backdrop-filter]:backdrop-blur-xl border-b border-slate-200/40 shadow-sm">
+        {/* Subtle top accent */}
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-slate-300/30 to-transparent"></div>
 
-        <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4">
+        <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-5 relative">
           <div className="flex items-center justify-between">
-            {/* Logo and Brand */}
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="relative">
-                <img
-                  src="/Imagem2.png"
-                  alt="WC do Técnico"
-                  className="w-11 h-11 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full shadow-lg border-2 border-white/90 transition-transform duration-200 hover:scale-105"
-                />
+            {/* Enhanced Logo and Brand */}
+            <div className="flex items-center gap-4 sm:gap-5">
+              <div className="relative group">
+                {/* Subtle glow effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-full blur-lg opacity-20 group-hover:opacity-30 transition-all duration-300"></div>
+
+                <div className="relative">
+                  <img
+                    src="/Imagem2.png"
+                    alt="WC do Técnico"
+                    className="w-12 h-12 sm:w-16 sm:h-16 md:w-18 md:h-18 rounded-full shadow-lg border-2 border-white/80 ring-2 ring-blue-500/10 transition-all duration-300 hover:scale-105 hover:shadow-xl"
+                  />
+                </div>
               </div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent tracking-tight">
-                IST Toilet Tracker
-              </h1>
+              <div className="flex flex-col">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-slate-800 via-blue-700 to-cyan-700 bg-clip-text text-transparent tracking-tight leading-tight">
+                  IST Toilet Tracker
+                </h1>
+              </div>
             </div>
 
             {/* Navigation Pills - Desktop only */}
             <div className="hidden lg:flex items-center gap-2">
-              <div className="flex items-center gap-1 bg-gray-100/80 backdrop-blur-sm rounded-full p-1.5 border border-gray-200/50 shadow-md">
+              <div className="flex items-center gap-1 bg-white/80 backdrop-blur-sm rounded-xl p-1 border border-slate-200/40">
                 <button
                   onClick={() => scrollToSection("map", "map")}
-                  className={`px-5 py-2.5 text-sm font-medium rounded-full shadow transition-all duration-200 ${
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                     activeTopTab === "map"
-                      ? "text-white bg-gradient-to-r from-blue-500 to-cyan-500 shadow-lg hover:shadow-xl hover:scale-105"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-white/70"
+                      ? "text-white bg-gradient-to-r from-blue-500 to-cyan-500 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-white/60"
                   }`}
                 >
                   Mapa
                 </button>
                 <button
                   onClick={() => scrollToSection("reviews", "reviews")}
-                  className={`px-5 py-2.5 text-sm font-medium rounded-full transition-all duration-200 ${
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                     activeTopTab === "reviews"
-                      ? "text-white bg-gradient-to-r from-blue-500 to-cyan-500 shadow-lg hover:shadow-xl hover:scale-105"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-white/70"
+                      ? "text-white bg-gradient-to-r from-blue-500 to-cyan-500 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-white/60"
                   }`}
                 >
                   Reviews
                 </button>
                 <button
                   onClick={() => scrollToSection("stats", "stats")}
-                  className={`px-5 py-2.5 text-sm font-medium rounded-full transition-all duration-200 ${
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                     activeTopTab === "stats"
-                      ? "text-white bg-gradient-to-r from-blue-500 to-cyan-500 shadow-lg hover:shadow-xl hover:scale-105"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-white/70"
+                      ? "text-white bg-gradient-to-r from-blue-500 to-cyan-500 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-white/60"
                   }`}
                 >
                   Stats
@@ -564,15 +570,25 @@ const Index = () => {
               </div>
             </div>
 
-            {/* Menu Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-full border-blue-200/50 bg-gradient-to-r from-white/80 to-blue-50/60 supports-[backdrop-filter]:backdrop-blur hover:from-blue-50/80 hover:to-cyan-50/70 hover:shadow-lg hover:scale-105 transition-all duration-200 p-2.5 ring-1 ring-blue-500/10 hover:ring-blue-500/20"
-              onClick={() => setIsMenuOpen(true)}
-            >
-              <Menu className="h-5 w-5 text-blue-600" />
-            </Button>
+            {/* Enhanced Menu Button */}
+            <div className="flex items-center gap-3">
+              {/* Quick stats indicator */}
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-slate-50/80 rounded-lg border border-slate-200/40">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-xs font-medium text-slate-700">
+                  {bathroomData.length} locais
+                </span>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-lg border-slate-200/40 bg-white/80 hover:bg-white transition-all duration-200 p-2.5 shadow-sm hover:shadow-md"
+                onClick={() => setIsMenuOpen(true)}
+              >
+                <Menu className="h-4 w-4 text-slate-700" />
+              </Button>
+            </div>
           </div>
         </div>
       </header>
