@@ -10,6 +10,8 @@ import {
   ChevronUp,
   Github,
   Navigation,
+  MapPin,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +28,7 @@ import { SearchInput } from "@/components/ui/search-input";
 import { BathroomCard } from "@/components/bathroom-card";
 import { MapWithFilters } from "@/components/map-with-filters";
 import { ReviewForm } from "@/components/review-form";
+import { QuickStats } from "@/components/quick-stats";
 import { BathroomDetails } from "@/components/bathroom-details";
 import { SidebarMenu } from "@/components/sidebar-menu";
 import { bathrooms, Bathroom, Review } from "@/data/bathrooms";
@@ -64,6 +67,11 @@ const Index = () => {
 
   // Consistent header offset for scroll calculations (avoid mismatched 72 vs 80)
   const HEADER_OFFSET = 80; // px
+
+  // Top filter state - moved up to avoid initialization error
+  const [topFilter, setTopFilter] = useState<
+    "rating" | "cleanliness" | "paper"
+  >("rating");
 
   // Derived pickers for review selector
   const buildings = Array.from(
@@ -173,40 +181,7 @@ const Index = () => {
     );
   };
 
-  // Auto ask for location once when the map first becomes visible
   const autoPromptedRef = useRef(false);
-  useEffect(() => {
-    if (locationStatus !== "idle" || autoPromptedRef.current) return;
-    // Avoid re-prompting across sessions (v1 key)
-    if (
-      typeof window !== "undefined" &&
-      localStorage.getItem("geo_prompted_v1")
-    ) {
-      autoPromptedRef.current = true;
-      return;
-    }
-
-    const mapEl = document.getElementById("map");
-    if (!mapEl) return; // map not yet mounted
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && !autoPromptedRef.current) {
-            autoPromptedRef.current = true;
-            try {
-              localStorage.setItem("geo_prompted_v1", "1");
-            } catch {}
-            requestLocation();
-            observer.disconnect();
-          }
-        });
-      },
-      { threshold: 0.4 }
-    );
-    observer.observe(mapEl);
-    return () => observer.disconnect();
-  }, [locationStatus]);
 
   // If permission already granted (user previously accepted), trigger immediately without waiting for visibility
   useEffect(() => {
@@ -293,11 +268,31 @@ const Index = () => {
 
   // Top 5 across the whole dataset (not affected by search), tie-break by review count
   const topBathroomsBase = [...bathroomData]
-    .sort((a, b) =>
-      b.rating !== a.rating
+    .sort((a, b) => {
+      if (topFilter === "cleanliness") {
+        const cleanlinessOrder = {
+          "Sempre limpo": 3,
+          "Geralmente limpo": 2,
+          "Às vezes limpo": 1,
+        };
+        const aClean =
+          cleanlinessOrder[a.cleanliness as keyof typeof cleanlinessOrder] || 0;
+        const bClean =
+          cleanlinessOrder[b.cleanliness as keyof typeof cleanlinessOrder] || 0;
+        if (aClean !== bClean) return bClean - aClean;
+      } else if (topFilter === "paper") {
+        const paperOrder = { Bom: 3, Médio: 2, Fraco: 1 };
+        const aPaper =
+          paperOrder[a.paperSupply as keyof typeof paperOrder] || 0;
+        const bPaper =
+          paperOrder[b.paperSupply as keyof typeof paperOrder] || 0;
+        if (aPaper !== bPaper) return bPaper - aPaper;
+      }
+      // Default to rating sort
+      return b.rating !== a.rating
         ? b.rating - a.rating
-        : b.reviewCount - a.reviewCount
-    )
+        : b.reviewCount - a.reviewCount;
+    })
     .slice(0, 5);
   const topBathrooms = withDynamicDistance(topBathroomsBase);
 
@@ -435,7 +430,6 @@ const Index = () => {
     }
   };
 
-  // Active top pill state
   const [activeTopTab, setActiveTopTab] = useState<"map" | "reviews" | "stats">(
     "map"
   );
@@ -511,10 +505,10 @@ const Index = () => {
         {/* Subtle top accent */}
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-slate-300/30 to-transparent"></div>
 
-        <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-5 relative">
+        <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-5 relative">
           <div className="flex items-center justify-between">
-            {/* Enhanced Logo and Brand */}
-            <div className="flex items-center gap-4 sm:gap-5">
+            {/* Enhanced Logo and Brand - Mobile Optimized */}
+            <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
               <div className="relative group">
                 {/* Subtle glow effect */}
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-full blur-lg opacity-20 group-hover:opacity-30 transition-all duration-300"></div>
@@ -523,14 +517,15 @@ const Index = () => {
                   <img
                     src="/Imagem2.png"
                     alt="WC do Técnico"
-                    className="w-12 h-12 sm:w-16 sm:h-16 md:w-18 md:h-18 rounded-full shadow-lg border-2 border-white/80 ring-2 ring-blue-500/10 transition-all duration-300 hover:scale-105 hover:shadow-xl"
+                    className="w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16 rounded-full shadow-lg border-2 border-white/80 ring-2 ring-blue-500/10 transition-all duration-300 hover:scale-105 hover:shadow-xl"
                   />
                 </div>
               </div>
-              <div className="flex flex-col">
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-slate-800 via-blue-700 to-cyan-700 bg-clip-text text-transparent tracking-tight leading-tight">
+              <div className="flex flex-col min-w-0 flex-1">
+                <h1 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-black bg-gradient-to-r from-slate-800 via-blue-700 to-cyan-700 bg-clip-text text-transparent tracking-tight leading-tight truncate">
                   IST Toilet Tracker
                 </h1>
+                <p className="text-xs text-slate-600 lg:hidden">Campus IST</p>
               </div>
             </div>
 
@@ -539,7 +534,7 @@ const Index = () => {
               <div className="flex items-center gap-1 bg-white/80 backdrop-blur-sm rounded-xl p-1 border border-slate-200/40">
                 <button
                   onClick={() => scrollToSection("map", "map")}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                     activeTopTab === "map"
                       ? "text-white bg-gradient-to-r from-blue-500 to-cyan-500 shadow-sm"
                       : "text-gray-600 hover:text-gray-900 hover:bg-white/60"
@@ -549,7 +544,7 @@ const Index = () => {
                 </button>
                 <button
                   onClick={() => scrollToSection("reviews", "reviews")}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                     activeTopTab === "reviews"
                       ? "text-white bg-gradient-to-r from-blue-500 to-cyan-500 shadow-sm"
                       : "text-gray-600 hover:text-gray-900 hover:bg-white/60"
@@ -559,7 +554,7 @@ const Index = () => {
                 </button>
                 <button
                   onClick={() => scrollToSection("stats", "stats")}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                     activeTopTab === "stats"
                       ? "text-white bg-gradient-to-r from-blue-500 to-cyan-500 shadow-sm"
                       : "text-gray-600 hover:text-gray-900 hover:bg-white/60"
@@ -570,20 +565,20 @@ const Index = () => {
               </div>
             </div>
 
-            {/* Enhanced Menu Button */}
-            <div className="flex items-center gap-3">
-              {/* Quick stats indicator */}
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-slate-50/80 rounded-lg border border-slate-200/40">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            {/* Enhanced Menu Button - Mobile Optimized */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Quick stats indicator - Hidden on very small screens */}
+              <div className="hidden sm:flex items-center gap-2 px-2 py-1 bg-slate-50/80 rounded-lg border border-slate-200/40">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
                 <span className="text-xs font-medium text-slate-700">
-                  {bathroomData.length} locais
+                  {bathroomData.length}
                 </span>
               </div>
 
               <Button
                 variant="outline"
                 size="sm"
-                className="rounded-lg border-slate-200/40 bg-white/80 hover:bg-white transition-all duration-200 p-2.5 shadow-sm hover:shadow-md"
+                className="rounded-lg border-slate-200/40 bg-white/80 hover:bg-white transition-all duration-200 p-2 shadow-sm hover:shadow-md"
                 onClick={() => setIsMenuOpen(true)}
               >
                 <Menu className="h-4 w-4 text-slate-700" />
@@ -593,38 +588,41 @@ const Index = () => {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-28 lg:pb-8 space-y-6 sm:space-y-8">
+      <div className="container mx-auto px-2 sm:px-3 lg:px-6 py-2 sm:py-3 lg:py-6 pb-16 lg:pb-8 space-y-2 sm:space-y-3 lg:space-y-6">
         {/* Back to top */}
         {showBackToTop && (
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="fixed bottom-5 right-5 z-40 rounded-full bg-white/90 dark:bg-gray-900/80 border border-gray-200/60 dark:border-gray-700/60 shadow-lg hover:shadow-xl transition-all p-3 animate-in fade-in slide-in-from-bottom-2"
+            className="fixed bottom-16 right-3 z-40 rounded-full bg-white/90 dark:bg-gray-900/80 border border-gray-200/60 dark:border-gray-700/60 shadow-lg hover:shadow-xl transition-all p-2.5 animate-in fade-in slide-in-from-bottom-2 lg:bottom-5 lg:right-5 lg:p-3"
             aria-label="Voltar ao topo"
           >
-            <ChevronUp className="h-5 w-5" />
+            <ChevronUp className="h-4 w-4 lg:h-5 lg:w-5" />
           </button>
         )}
-        {/* Search Section */}
+        {/* Search Section - Mobile Optimized */}
         <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-2xl blur-xl"></div>
-          <div className="relative bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-xl sm:rounded-2xl blur-xl"></div>
+          <div className="relative bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
             <SearchInput
               placeholder="Buscar casa de banho..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-base sm:text-lg bg-white/90 dark:bg-gray-800/90 border-gray-200/60 dark:border-gray-700/60 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all duration-200 h-12 sm:h-14"
+              className="w-full text-sm sm:text-base lg:text-lg bg-white/90 dark:bg-gray-800/90 border-gray-200/60 dark:border-gray-700/60 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all duration-200 h-10 sm:h-12 lg:h-14"
             />
           </div>
         </div>
 
-        {/* Map Section */}
-        <div className="space-y-4 scroll-mt-24" id="map">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
-            <div className="w-1 h-4 bg-gradient-to-b from-blue-400 to-blue-600 rounded-full"></div>
+        {/* Map Section - Mobile Optimized */}
+        <div
+          className="space-y-2 sm:space-y-3 lg:space-y-4 scroll-mt-24"
+          id="map"
+        >
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 sm:gap-3">
+            <div className="w-1 h-3 sm:h-4 bg-gradient-to-b from-blue-400 to-blue-600 rounded-full"></div>
             <img
               src="/Imagem2.png"
               alt="IST"
-              className="w-5 h-5 rounded-full ring-2 ring-blue-500/20"
+              className="w-4 h-4 sm:w-5 sm:h-5 rounded-full ring-2 ring-blue-500/20"
             />
             Mapa do Campus IST
           </h2>
@@ -650,7 +648,7 @@ const Index = () => {
         </div>
 
         {/* Quick Stats (compact) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
           {/* Location prompt / status (mobile first row if not enabled) */}
           {locationStatus !== "enabled" && (
             <Card className="md:hidden border-dashed border-2 border-blue-300/60 bg-blue-50/60 backdrop-blur-sm hover:shadow-md transition-all">
@@ -761,14 +759,14 @@ const Index = () => {
           </Card>
         </div>
 
-        {/* Closest Bathroom */}
+        {/* Closest Bathroom - Mobile Optimized */}
         {sortedBathrooms.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center shadow-md">
-                <Target className="h-4 w-4 text-white" />
+          <div className="space-y-2 sm:space-y-3 lg:space-y-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center shadow-md">
+                <Target className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
                 Casa de banho mais próxima
               </h2>
             </div>
@@ -807,7 +805,7 @@ const Index = () => {
           id="reviews"
           className="border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-blue-50/80 to-cyan-100/60 dark:from-blue-950/20 dark:to-cyan-900/10 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] scroll-mt-24"
         >
-          <CardContent className="p-6 text-center">
+          <CardContent className="p-4 sm:p-6 text-center">
             <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl">
               <Sparkles className="h-8 w-8 text-white" />
             </div>
@@ -948,58 +946,130 @@ const Index = () => {
           </CardContent>
         </Card>
 
-        {/* Top Bathrooms (moved below Reviews to match tab order) */}
-        <div className="space-y-4 scroll-mt-24" id="stats">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full flex items-center justify-center shadow-md">
-              <Star className="h-4 w-4 text-white" />
+        {/* Top Bathrooms - Ultra Minimalist */}
+        <div
+          className="space-y-1 sm:space-y-2 scroll-mt-24 animate-in fade-in slide-in-from-bottom-4 duration-700"
+          id="stats"
+        >
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-sm">
+              <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-white" />
             </div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-              Top 5 casas de banho do IST
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
+              Top 5 casas de banho
             </h2>
           </div>
-          <div className="space-y-3" ref={topListRef}>
+          <div
+            className="space-y-1 sm:space-y-2 contain-inline"
+            ref={topListRef}
+          >
             {topBathrooms.map((bathroom, index) => {
               const displayDistance = isNearIST
                 ? bathroom.dynamicDistance ?? bathroom.distance
                 : showOffCampusDistance
                 ? bathroom.distance
                 : undefined;
-              const rankStyles =
-                index === 0
-                  ? "from-yellow-400 to-yellow-500 ring-yellow-300"
-                  : index === 1
-                  ? "from-gray-300 to-gray-400 ring-gray-200"
-                  : index === 2
-                  ? "from-orange-400 to-orange-500 ring-orange-300"
-                  : "from-blue-400 to-blue-500";
 
               return (
-                <div
+                <button
                   key={bathroom.id}
                   data-top-item
                   data-index={index}
-                  className={
-                    "relative p-3 sm:p-4 bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm rounded-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-md transition-all duration-500 " +
-                    (visibleTopIndices.has(index)
-                      ? "opacity-100 translate-y-0 hover:shadow-lg"
-                      : "opacity-0 translate-y-3")
-                  }
-                  style={{ transitionDelay: `${index * 60}ms` }}
+                  className={`
+                    group relative flex w-full items-center gap-3 p-2 sm:p-3 rounded-lg sm:rounded-xl text-left
+                    bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm
+                    border border-gray-200/40 dark:border-gray-700/40
+                    hover:bg-white/80 dark:hover:bg-gray-900/80
+                    hover:border-gray-300/60 dark:hover:border-gray-600/60
+                    transition-all duration-300 ease-out
+                    hover:shadow-md hover:shadow-blue-500/10
+                    cursor-pointer select-none touch-manipulation
+                    focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900
+                    active:scale-[0.98] active:translate-y-[1px]
+                    ${
+                      visibleTopIndices.has(index)
+                        ? "opacity-100 translate-x-0 scale-100"
+                        : "opacity-0 -translate-x-2 scale-95"
+                    }
+                  `}
+                  style={{
+                    transitionDelay: `${index * 80}ms`,
+                    transitionProperty:
+                      "opacity, transform, background-color, border-color, box-shadow",
+                  }}
+                  type="button"
+                  aria-label={`Ver detalhes de ${bathroom.name}`}
+                  aria-haspopup="dialog"
+                  onClick={() => handleViewBathroomDetails(bathroom)}
                 >
+                  {/* Rank Number - Minimal */}
                   <div
-                    className={`absolute -left-3 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold shadow-lg bg-gradient-to-r ${rankStyles} text-white ring-2`}
+                    className={`
+                    relative flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full
+                    flex items-center justify-center text-xs font-bold
+                    transition-all duration-300 group-hover:scale-110
+                    ${
+                      index === 0
+                        ? "bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-sm ring-2 ring-yellow-300/30"
+                        : index === 1
+                        ? "bg-gradient-to-r from-gray-300 to-gray-400 text-white shadow-sm"
+                        : index === 2
+                        ? "bg-gradient-to-r from-orange-400 to-orange-500 text-white shadow-sm"
+                        : "bg-gradient-to-r from-blue-400 to-blue-500 text-white shadow-sm"
+                    }
+                  `}
                   >
                     {index + 1}
+                    {/* Subtle glow effect */}
+                    <div className="absolute inset-0 rounded-full bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    {/* Crown for first place */}
+                    {index === 0 && (
+                      <div className="absolute -top-1 -right-1 text-yellow-300 text-xs opacity-80">
+                        👑
+                      </div>
+                    )}
                   </div>
-                  <div className="pl-6 sm:pl-8">
-                    <BathroomCard
-                      {...bathroom}
-                      distance={displayDistance}
-                      onViewDetails={() => handleViewBathroomDetails(bathroom)}
-                    />
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm sm:text-base truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200">
+                          {bathroom.name}
+                        </h3>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                          {bathroom.building} • {bathroom.floor}
+                        </p>
+                      </div>
+
+                      {/* Rating - Compact */}
+                      <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                        <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 fill-yellow-400 text-yellow-400" />
+                        <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100">
+                          {bathroom.rating}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Distance - Only show if available */}
+                    {displayDistance !== undefined && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <MapPin className="h-2.5 w-2.5 text-gray-400" />
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {displayDistance}m
+                        </span>
+                      </div>
+                    )}
                   </div>
-                </div>
+
+                  {/* Hover Arrow */}
+                  <div
+                    className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-all duration-300 transform group-hover:translate-x-1"
+                    aria-hidden="true"
+                  >
+                    <Info className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500" />
+                  </div>
+                </button>
               );
             })}
           </div>
@@ -1028,10 +1098,10 @@ const Index = () => {
         )}
 
         {/* About Section */}
-        <section id="about" className="mt-10 sm:mt-14 scroll-mt-24">
+        <section id="about" className="mt-4 sm:mt-6 lg:mt-10 scroll-mt-24">
           <div
             ref={aboutRef}
-            className="relative overflow-hidden rounded-3xl border border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-white/90 to-blue-50/60 dark:from-gray-900/80 dark:to-indigo-950/30 p-6 sm:p-10 shadow-xl hover:shadow-2xl transition-shadow duration-300"
+            className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-white/90 to-blue-50/60 dark:from-gray-900/80 dark:to-indigo-950/30 p-4 sm:p-6 lg:p-10 shadow-xl hover:shadow-2xl transition-shadow duration-300"
           >
             {/* Decorative glows */}
             <div className="pointer-events-none absolute -top-20 -left-20 w-56 h-56 rounded-full bg-blue-400/10 blur-3xl animate-pulse" />
@@ -1157,10 +1227,10 @@ const Index = () => {
         <SidebarMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
       </div>
 
-      {/* Bottom Mobile Nav */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 pb-safe pointer-events-none">
-        <div className="mx-auto max-w-md px-4 pb-4 pt-2 pointer-events-auto">
-          <div className="flex justify-around items-stretch bg-white/90 backdrop-blur-md border border-gray-200/60 shadow-xl shadow-black/5 rounded-2xl p-1">
+      {/* Bottom Mobile Nav - Enhanced */}
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 pb-safe pointer-events-none overflow-x-hidden w-full">
+        <div className="mx-auto max-w-md w-full px-2 sm:px-3 pb-2 sm:pb-3 pt-1.5 pointer-events-auto">
+          <div className="flex justify-around items-stretch bg-white/95 backdrop-blur-md border border-gray-200/60 shadow-xl shadow-black/5 rounded-xl sm:rounded-2xl p-1">
             {(
               [
                 { id: "map", label: "Mapa", icon: Map },
@@ -1174,21 +1244,21 @@ const Index = () => {
                 <button
                   key={item.id}
                   onClick={() => scrollToSection(item.id, item.id as any)}
-                  className={`flex-1 group relative overflow-hidden rounded-xl px-3 py-2 flex flex-col items-center justify-center gap-1 text-[11px] font-medium transition-all duration-300 ${
+                  className={`flex-1 group relative overflow-hidden rounded-lg sm:rounded-xl px-2 sm:px-3 py-2 flex flex-col items-center justify-center gap-1 text-[10px] sm:text-[11px] font-medium transition-all duration-300 min-h-[48px] touch-manipulation ${
                     active
                       ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-white"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-white/80"
                   }`}
                   aria-label={item.label}
                 >
                   <Icon
-                    className={`h-5 w-5 transition-transform duration-300 ${
+                    className={`h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 ${
                       active ? "scale-110" : "group-hover:scale-110"
                     }`}
                   />
                   <span>{item.label}</span>
                   {active && (
-                    <span className="absolute inset-0 -z-10 opacity-40 bg-gradient-to-r from-blue-500/40 to-cyan-500/40" />
+                    <span className="absolute inset-0 -z-10 opacity-40 bg-gradient-to-r from-blue-500/40 to-cyan-500/40 rounded-lg sm:rounded-xl" />
                   )}
                 </button>
               );

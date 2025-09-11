@@ -129,8 +129,25 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground overflow-x-hidden;
   }
+}
+
+/* Prevent horizontal scroll leaks from any child */
+html,
+body,
+#root {
+  overflow-x: hidden;
+}
+
+/* Prefer clipping tiny transform spillover instead of creating scrollbars */
+#root {
+  overflow-x: clip;
+}
+
+/* Utility to contain animated rows so they don't cause rightward scroll */
+.contain-inline {
+  contain: inline-size;
 }
 
 /* Custom animations */
