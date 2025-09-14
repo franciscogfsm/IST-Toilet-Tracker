@@ -66,7 +66,7 @@ const Index = () => {
   };
 
   // Consistent header offset for scroll calculations (avoid mismatched 72 vs 80)
-  const HEADER_OFFSET = 80; // px
+  const HEADER_OFFSET = 72; // px - adjusted for better mobile scroll positioning
 
   // Top filter state - moved up to avoid initialization error
   const [topFilter, setTopFilter] = useState<
@@ -308,6 +308,11 @@ const Index = () => {
     new Set()
   );
   const topListRef = useRef<HTMLDivElement | null>(null);
+
+  // Special highlight for first place
+  const [firstPlaceHighlighted, setFirstPlaceHighlighted] = useState(false);
+  const firstPlaceRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     const container = topListRef.current;
     if (!container) return;
@@ -333,6 +338,106 @@ const Index = () => {
     items.forEach((el) => io.observe(el));
     return () => io.disconnect();
   }, [topBathrooms]);
+
+  // Special observer for first place highlight
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !firstPlaceHighlighted) {
+            setFirstPlaceHighlighted(true);
+          }
+        });
+      },
+      { threshold: 0.6, rootMargin: "0px 0px -100px 0px" }
+    );
+
+    if (firstPlaceRef.current) {
+      observer.observe(firstPlaceRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [firstPlaceHighlighted]);
+
+  // Interactive Stats Animation State
+  const [statsVisible, setStatsVisible] = useState(false);
+  const [animatedStats, setAnimatedStats] = useState({
+    totalReviews: 0,
+    avgRating: 0,
+    buildings: 0,
+  });
+  const statsRef = useRef<HTMLDivElement | null>(null);
+
+  // Custom hook for counting animation
+  const useCountUp = (
+    end: number,
+    duration: number = 2000,
+    start: boolean = false
+  ) => {
+    const [count, setCount] = useState(0);
+
+    useEffect(() => {
+      if (!start) return;
+
+      let startTime: number;
+      let animationFrame: number;
+
+      const animate = (currentTime: number) => {
+        if (!startTime) startTime = currentTime;
+        const progress = Math.min((currentTime - startTime) / duration, 1);
+
+        // Easing function for smooth animation
+        const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+        setCount(Math.floor(easeOutQuart * end));
+
+        if (progress < 1) {
+          animationFrame = requestAnimationFrame(animate);
+        }
+      };
+
+      animationFrame = requestAnimationFrame(animate);
+
+      return () => {
+        if (animationFrame) {
+          cancelAnimationFrame(animationFrame);
+        }
+      };
+    }, [end, duration, start]);
+
+    return count;
+  };
+
+  // Calculate stats values
+  const totalReviews = bathroomData.reduce((sum, b) => sum + b.reviewCount, 0);
+  const avgRating =
+    bathroomData.reduce((sum, b) => sum + b.rating, 0) / bathroomData.length;
+  const buildingsCount = new Set(bathroomData.map((b) => b.building)).size;
+
+  // Animated counters
+  const animatedTotalReviews = useCountUp(totalReviews, 1500, statsVisible);
+  const animatedAvgRating =
+    useCountUp(Math.floor(avgRating * 10), 1800, statsVisible) / 10;
+  const animatedBuildings = useCountUp(buildingsCount, 1200, statsVisible);
+
+  // Stats visibility observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !statsVisible) {
+            setStatsVisible(true);
+          }
+        });
+      },
+      { threshold: 0.3, rootMargin: "0px 0px -50px 0px" }
+    );
+
+    if (statsRef.current) {
+      observer.observe(statsRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [statsVisible]);
 
   const handleReviewBathroom = (bathroomName: string) => {
     setReviewBathroom(bathroomName);
@@ -600,14 +705,14 @@ const Index = () => {
         )}
 
         {/* Search Section - Minimalist & Modern */}
-        <div className="relative max-w-lg mx-auto">
+        <div className="relative mx-auto max-w-lg md:max-w-2xl lg:max-w-3xl">
           <SearchInput
             placeholder="Buscar por nome, edifício ou piso..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full"
-            inputClassName="h-10 text-sm rounded-xl pl-10 pr-10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400/50 transition-all duration-300 shadow-sm hover:shadow-md focus:shadow-lg"
-            iconClassName="text-slate-600 dark:text-slate-200 drop-shadow-sm h-[22px] w-[22px]"
+            inputClassName="h-10 md:h-11 lg:h-12 text-sm md:text-base rounded-xl lg:rounded-2xl pl-10 md:pl-11 lg:pl-12 pr-10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 md:placeholder:text-slate-500 dark:placeholder:text-slate-400/90 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400/50 transition-all duration-300 shadow-sm hover:shadow-md focus:shadow-lg"
+            iconClassName="text-slate-600 dark:text-slate-200 drop-shadow-sm h-[22px] w-[22px] md:h-6 md:w-6"
           />
           {/* Clear Button */}
           {searchQuery && (
@@ -748,34 +853,6 @@ const Index = () => {
                   )}
                 </div>
               )}
-            </CardContent>
-          </Card>
-
-          <Card className="border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-yellow-50/70 to-orange-100/50 dark:from-yellow-950/20 dark:to-orange-900/10 backdrop-blur-sm shadow-md hover:shadow-lg transition-all">
-            <CardContent className="p-4 text-center">
-              <div className="w-9 h-9 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-2.5 shadow-md">
-                <Star className="h-4 w-4 text-white" />
-              </div>
-              <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 mb-0.5">
-                Melhor avaliada
-              </p>
-              <p className="text-base font-extrabold text-yellow-600 dark:text-yellow-400 tracking-tight">
-                {bathroomData.sort((a, b) => b.rating - a.rating)[0]?.rating}★
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-emerald-50/70 to-green-100/50 dark:from-emerald-950/20 dark:to-green-900/10 backdrop-blur-sm shadow-md hover:shadow-lg transition-all">
-            <CardContent className="p-4 text-center">
-              <div className="w-9 h-9 bg-gradient-to-r from-emerald-500 to-green-500 rounded-full flex items-center justify-center mx-auto mb-2.5 shadow-md">
-                <TrendingUp className="h-4 w-4 text-white" />
-              </div>
-              <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 mb-0.5">
-                Total de casas de banho
-              </p>
-              <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">
-                {bathroomData.length}
-              </p>
             </CardContent>
           </Card>
         </div>
@@ -991,9 +1068,13 @@ const Index = () => {
                 ? bathroom.distance
                 : undefined;
 
+              const isFirstPlace = index === 0;
+              const isThirdPlace = index === 2; // Remove highlight from third place
+
               return (
                 <button
                   key={bathroom.id}
+                  ref={isFirstPlace ? firstPlaceRef : null}
                   data-top-item
                   data-index={index}
                   className={`
@@ -1007,6 +1088,11 @@ const Index = () => {
                     cursor-pointer select-none touch-manipulation
                     focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900
                     active:scale-[0.98] active:translate-y-[1px]
+                    ${
+                      isFirstPlace && firstPlaceHighlighted
+                        ? "ring-2 ring-yellow-400/50 shadow-lg shadow-yellow-500/20"
+                        : ""
+                    }
                     ${
                       visibleTopIndices.has(index)
                         ? "opacity-100 translate-x-0 scale-100"
@@ -1023,29 +1109,38 @@ const Index = () => {
                   aria-haspopup="dialog"
                   onClick={() => handleViewBathroomDetails(bathroom)}
                 >
-                  {/* Rank Number - Minimal */}
+                  {/* Special first place glow effect */}
+                  {isFirstPlace && firstPlaceHighlighted && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/10 via-orange-400/5 to-yellow-400/10 rounded-lg sm:rounded-xl animate-pulse" />
+                  )}
+
+                  {/* Rank Number - Special for first place */}
                   <div
                     className={`
                     relative flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full
                     flex items-center justify-center text-xs font-bold
                     transition-all duration-300 group-hover:scale-110
                     ${
-                      index === 0
+                      isFirstPlace
                         ? "bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-sm ring-2 ring-yellow-300/30"
+                        : isThirdPlace
+                        ? "bg-gradient-to-r from-blue-400 to-blue-500 text-white shadow-sm" // Remove special styling from third
                         : index === 1
                         ? "bg-gradient-to-r from-gray-300 to-gray-400 text-white shadow-sm"
-                        : index === 2
-                        ? "bg-gradient-to-r from-orange-400 to-orange-500 text-white shadow-sm"
-                        : "bg-gradient-to-r from-blue-400 to-blue-500 text-white shadow-sm"
+                        : index === 3
+                        ? "bg-gradient-to-r from-purple-400 to-purple-500 text-white shadow-sm"
+                        : "bg-gradient-to-r from-green-400 to-green-500 text-white shadow-sm"
                     }
                   `}
                   >
                     {index + 1}
-                    {/* Subtle glow effect */}
-                    <div className="absolute inset-0 rounded-full bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    {/* Special glow for first place */}
+                    {isFirstPlace && firstPlaceHighlighted && (
+                      <div className="absolute inset-0 rounded-full bg-yellow-300/40 animate-ping" />
+                    )}
                     {/* Crown for first place */}
-                    {index === 0 && (
-                      <div className="absolute -top-1 -right-1 text-yellow-300 text-xs opacity-80">
+                    {isFirstPlace && (
+                      <div className="absolute -top-1 -right-1 text-yellow-300 text-xs opacity-80 animate-bounce">
                         👑
                       </div>
                     )}
@@ -1055,18 +1150,41 @@ const Index = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm sm:text-base truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200">
+                        <h3
+                          className={`font-semibold text-gray-900 dark:text-gray-100 text-sm sm:text-base truncate transition-colors duration-200 ${
+                            isFirstPlace && firstPlaceHighlighted
+                              ? "text-yellow-700 dark:text-yellow-300"
+                              : "group-hover:text-blue-600 dark:group-hover:text-blue-400"
+                          }`}
+                        >
                           {bathroom.name}
+                          {isFirstPlace && firstPlaceHighlighted && (
+                            <span className="ml-2 text-xs text-yellow-600 dark:text-yellow-400 font-bold animate-pulse">
+                              🏆 #1
+                            </span>
+                          )}
                         </h3>
                         <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
                           {bathroom.building} • {bathroom.floor}
                         </p>
                       </div>
 
-                      {/* Rating - Compact */}
+                      {/* Rating - Special for first place */}
                       <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-                        <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 fill-yellow-400 text-yellow-400" />
-                        <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100">
+                        <Star
+                          className={`h-3 w-3 sm:h-3.5 sm:w-3.5 fill-yellow-400 text-yellow-400 ${
+                            isFirstPlace && firstPlaceHighlighted
+                              ? "animate-pulse scale-110"
+                              : ""
+                          }`}
+                        />
+                        <span
+                          className={`text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 ${
+                            isFirstPlace && firstPlaceHighlighted
+                              ? "text-yellow-600 dark:text-yellow-400"
+                              : ""
+                          }`}
+                        >
                           {bathroom.rating}
                         </span>
                       </div>
@@ -1083,6 +1201,24 @@ const Index = () => {
                     )}
                   </div>
 
+                  {/* Special first place particles */}
+                  {isFirstPlace && firstPlaceHighlighted && (
+                    <div className="absolute inset-0 pointer-events-none">
+                      <div
+                        className="absolute top-2 right-2 w-1 h-1 bg-yellow-400 rounded-full animate-ping"
+                        style={{ animationDelay: "0s" }}
+                      />
+                      <div
+                        className="absolute top-4 right-4 w-1 h-1 bg-orange-400 rounded-full animate-ping"
+                        style={{ animationDelay: "0.5s" }}
+                      />
+                      <div
+                        className="absolute bottom-2 left-2 w-1 h-1 bg-yellow-300 rounded-full animate-ping"
+                        style={{ animationDelay: "1s" }}
+                      />
+                    </div>
+                  )}
+
                   {/* Hover Arrow */}
                   <div
                     className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-all duration-300 transform group-hover:translate-x-1"
@@ -1093,6 +1229,351 @@ const Index = () => {
                 </button>
               );
             })}
+          </div>
+
+          {/* Interactive Statistics Cards */}
+          <div ref={statsRef} className="mt-8 space-y-4">
+            {/* Stats Header with Animation */}
+            <div className="text-center space-y-2">
+              <h3
+                className={`text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent transition-all duration-1000 ${
+                  statsVisible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-4"
+                }`}
+              >
+                📊 Estatísticas do Campus
+              </h3>
+              <p
+                className={`text-sm text-gray-600 dark:text-gray-400 transition-all duration-1000 delay-200 ${
+                  statsVisible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-4"
+                }`}
+              >
+                Dados em tempo real da comunidade IST
+              </p>
+            </div>
+
+            {/* Stats Grid with Staggered Animation */}
+            <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              {/* Total Reviews */}
+              <Card
+                className={`group relative overflow-hidden border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-purple-50/70 to-pink-100/50 dark:from-purple-950/20 dark:to-pink-900/10 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-500 hover:scale-[1.02] cursor-pointer active:scale-[0.98] touch-manipulation ${
+                  statsVisible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-8"
+                }`}
+                style={{ transitionDelay: statsVisible ? "300ms" : "0ms" }}
+              >
+                {/* Animated background gradient */}
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-400/0 via-pink-400/0 to-purple-400/0 group-hover:from-purple-400/10 group-hover:via-pink-400/5 group-hover:to-purple-400/10 transition-all duration-700" />
+
+                {/* Mobile touch indicator */}
+                <div className="absolute top-2 right-2 md:hidden">
+                  <div className="w-6 h-6 bg-purple-500/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-purple-300/30">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
+                  </div>
+                </div>
+
+                <CardContent className="relative p-4 sm:p-5 text-center">
+                  {/* Pulsing icon */}
+                  <div className="relative mx-auto mb-3 w-12 h-12 sm:w-14 sm:h-14">
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-pulse opacity-20 group-hover:opacity-40 transition-opacity duration-300" />
+                    <div className="relative w-full h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                      <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                    </div>
+                  </div>
+
+                  <p className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1 group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors duration-300">
+                    Total de Reviews
+                  </p>
+
+                  {/* Animated counter */}
+                  <div className="relative">
+                    <p className="text-xl sm:text-2xl font-black text-purple-600 dark:text-purple-400 tracking-tight group-hover:scale-110 transition-transform duration-300">
+                      {animatedTotalReviews.toLocaleString()}
+                    </p>
+                    {/* Sparkle effect on hover */}
+                    <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <Sparkles className="h-4 w-4 text-yellow-400 animate-pulse" />
+                    </div>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="mt-3 w-full bg-purple-100 dark:bg-purple-900/30 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-1000 ease-out"
+                      style={{
+                        width: statsVisible
+                          ? `${Math.min(
+                              (animatedTotalReviews / totalReviews) * 100,
+                              100
+                            )}%`
+                          : "0%",
+                      }}
+                    />
+                  </div>
+
+                  {/* Mobile hint */}
+                  <div className="mt-2 md:hidden">
+                    <p className="text-[10px] text-purple-600/70 dark:text-purple-400/70 font-medium">
+                      Toque para explorar →
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Average Rating */}
+              <Card
+                className={`group relative overflow-hidden border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-amber-50/70 to-yellow-100/50 dark:from-amber-950/20 dark:to-yellow-900/10 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-500 hover:scale-[1.02] cursor-pointer active:scale-[0.98] touch-manipulation ${
+                  statsVisible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-8"
+                }`}
+                style={{ transitionDelay: statsVisible ? "500ms" : "0ms" }}
+              >
+                {/* Animated background gradient */}
+                <div className="absolute inset-0 bg-gradient-to-r from-amber-400/0 via-yellow-400/0 to-amber-400/0 group-hover:from-amber-400/10 group-hover:via-yellow-400/5 group-hover:to-amber-400/10 transition-all duration-700" />
+
+                {/* Mobile touch indicator */}
+                <div className="absolute top-2 right-2 md:hidden">
+                  <div className="w-6 h-6 bg-amber-500/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-amber-300/30">
+                    <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+                  </div>
+                </div>
+
+                <CardContent className="relative p-4 sm:p-5 text-center">
+                  {/* Pulsing icon */}
+                  <div className="relative mx-auto mb-3 w-12 h-12 sm:w-14 sm:h-14">
+                    <div className="absolute inset-0 bg-gradient-to-r from-amber-500 to-yellow-500 rounded-full animate-pulse opacity-20 group-hover:opacity-40 transition-opacity duration-300" />
+                    <div className="relative w-full h-full bg-gradient-to-r from-amber-500 to-yellow-500 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                      <Star className="h-5 w-5 sm:h-6 sm:w-6 text-white fill-white" />
+                    </div>
+                  </div>
+
+                  <p className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1 group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors duration-300">
+                    Avaliação Média
+                  </p>
+
+                  {/* Animated counter */}
+                  <div className="relative">
+                    <p className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 tracking-tight group-hover:scale-110 transition-transform duration-300">
+                      {animatedAvgRating.toFixed(1)}
+                      <span className="text-lg sm:text-xl ml-1">★</span>
+                    </p>
+                    {/* Sparkle effect on hover */}
+                    <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <Sparkles className="h-4 w-4 text-yellow-400 animate-pulse" />
+                    </div>
+                  </div>
+
+                  {/* Rating visualization */}
+                  <div className="mt-3 flex justify-center space-x-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={`h-3 w-3 transition-all duration-500 ${
+                          star <= Math.floor(animatedAvgRating)
+                            ? "text-amber-400 fill-amber-400"
+                            : star <= animatedAvgRating
+                            ? "text-amber-400 fill-amber-400/50"
+                            : "text-gray-300"
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Mobile hint */}
+                  <div className="mt-2 md:hidden">
+                    <p className="text-[10px] text-amber-600/70 dark:text-amber-400/70 font-medium">
+                      Toque para explorar →
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Buildings Covered */}
+              <Card
+                className={`group relative overflow-hidden border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-teal-50/70 to-cyan-100/50 dark:from-teal-950/20 dark:to-cyan-900/10 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-500 hover:scale-[1.02] cursor-pointer active:scale-[0.98] touch-manipulation ${
+                  statsVisible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-8"
+                }`}
+                style={{ transitionDelay: statsVisible ? "700ms" : "0ms" }}
+              >
+                {/* Animated background gradient */}
+                <div className="absolute inset-0 bg-gradient-to-r from-teal-400/0 via-cyan-400/0 to-teal-400/0 group-hover:from-teal-400/10 group-hover:via-cyan-400/5 group-hover:to-teal-400/10 transition-all duration-700" />
+
+                {/* Mobile touch indicator */}
+                <div className="absolute top-2 right-2 md:hidden">
+                  <div className="w-6 h-6 bg-teal-500/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-teal-300/30">
+                    <div className="w-2 h-2 bg-teal-500 rounded-full animate-pulse" />
+                  </div>
+                </div>
+
+                <CardContent className="relative p-4 sm:p-5 text-center">
+                  {/* Pulsing icon */}
+                  <div className="relative mx-auto mb-3 w-12 h-12 sm:w-14 sm:h-14">
+                    <div className="absolute inset-0 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full animate-pulse opacity-20 group-hover:opacity-40 transition-opacity duration-300" />
+                    <div className="relative w-full h-full bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                      <Map className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                    </div>
+                  </div>
+
+                  <p className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors duration-300">
+                    Edifícios Mapeados
+                  </p>
+
+                  {/* Animated counter */}
+                  <div className="relative">
+                    <p className="text-xl sm:text-2xl font-black text-teal-600 dark:text-teal-400 tracking-tight group-hover:scale-110 transition-transform duration-300">
+                      {animatedBuildings}
+                    </p>
+                    {/* Sparkle effect on hover */}
+                    <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <Sparkles className="h-4 w-4 text-yellow-400 animate-pulse" />
+                    </div>
+                  </div>
+
+                  {/* Building icons visualization */}
+                  <div className="mt-3 flex justify-center space-x-1">
+                    {Array.from(
+                      { length: Math.min(animatedBuildings, 5) },
+                      (_, i) => (
+                        <div
+                          key={i}
+                          className="w-2 h-2 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full animate-pulse"
+                          style={{ animationDelay: `${i * 200}ms` }}
+                        />
+                      )
+                    )}
+                    {animatedBuildings > 5 && (
+                      <span className="text-xs text-teal-600 dark:text-teal-400 font-semibold ml-1">
+                        +{animatedBuildings - 5}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Mobile hint */}
+                  <div className="mt-2 md:hidden">
+                    <p className="text-[10px] text-teal-600/70 dark:text-teal-400/70 font-medium">
+                      Toque para explorar →
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Cleanest Average */}
+              <Card
+                className={`group relative overflow-hidden border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-green-50/70 to-emerald-100/50 dark:from-green-950/20 dark:to-emerald-900/10 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-500 hover:scale-[1.02] cursor-pointer active:scale-[0.98] touch-manipulation ${
+                  statsVisible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-8"
+                }`}
+                style={{ transitionDelay: statsVisible ? "900ms" : "0ms" }}
+              >
+                {/* Animated background gradient */}
+                <div className="absolute inset-0 bg-gradient-to-r from-green-400/0 via-emerald-400/0 to-green-400/0 group-hover:from-green-400/10 group-hover:via-emerald-400/5 group-hover:to-green-400/10 transition-all duration-700" />
+
+                {/* Mobile touch indicator */}
+                <div className="absolute top-2 right-2 md:hidden">
+                  <div className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-green-300/30">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  </div>
+                </div>
+
+                <CardContent className="relative p-4 sm:p-5 text-center">
+                  {/* Pulsing icon */}
+                  <div className="relative mx-auto mb-3 w-12 h-12 sm:w-14 sm:h-14">
+                    <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full animate-pulse opacity-20 group-hover:opacity-40 transition-opacity duration-300" />
+                    <div className="relative w-full h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                      <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                    </div>
+                  </div>
+
+                  <p className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1 group-hover:text-green-700 dark:group-hover:text-green-300 transition-colors duration-300">
+                    Higiene Geral
+                  </p>
+
+                  {/* Animated text */}
+                  <div className="relative">
+                    <p
+                      className={`text-sm sm:text-base font-bold text-green-600 dark:text-green-400 group-hover:scale-105 transition-transform duration-300 ${
+                        statsVisible ? "opacity-100" : "opacity-0"
+                      }`}
+                      style={{
+                        transitionDelay: statsVisible ? "1200ms" : "0ms",
+                      }}
+                    >
+                      {(() => {
+                        const cleanlinessCounts = bathroomData.reduce(
+                          (acc, b) => {
+                            acc[b.cleanliness] = (acc[b.cleanliness] || 0) + 1;
+                            return acc;
+                          },
+                          {} as Record<string, number>
+                        );
+                        const mostCommon = Object.entries(
+                          cleanlinessCounts
+                        ).sort(([, a], [, b]) => b - a)[0];
+                        return mostCommon ? mostCommon[0] : "N/A";
+                      })()}
+                    </p>
+                    {/* Sparkle effect on hover */}
+                    <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <Sparkles className="h-4 w-4 text-yellow-400 animate-pulse" />
+                    </div>
+                  </div>
+
+                  {/* Cleanliness indicator */}
+                  <div
+                    className={`mt-3 transition-all duration-700 ${
+                      statsVisible
+                        ? "opacity-100 scale-100"
+                        : "opacity-0 scale-95"
+                    }`}
+                    style={{ transitionDelay: statsVisible ? "1400ms" : "0ms" }}
+                  >
+                    <div className="flex justify-center">
+                      <div className="px-3 py-1 bg-green-100 dark:bg-green-900/30 rounded-full border border-green-200 dark:border-green-800">
+                        <span className="text-xs font-semibold text-green-700 dark:text-green-300">
+                          🧼 Excelente
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mobile hint */}
+                  <div className="mt-2 md:hidden">
+                    <p className="text-[10px] text-green-600/70 dark:text-green-400/70 font-medium">
+                      Toque para explorar →
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Fun fact reveal */}
+            <div
+              className={`text-center mt-6 transition-all duration-1000 ${
+                statsVisible
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-4"
+              }`}
+              style={{ transitionDelay: statsVisible ? "1600ms" : "0ms" }}
+            >
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 rounded-full border border-blue-200/50 dark:border-blue-800/50">
+                <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-pulse" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  💡 A comunidade IST já ajudou{" "}
+                  <span className="font-bold text-blue-600 dark:text-blue-400">
+                    {animatedTotalReviews}
+                  </span>{" "}
+                  estudantes!
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1248,42 +1729,98 @@ const Index = () => {
         <SidebarMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
       </div>
 
-      {/* Bottom Mobile Nav - Enhanced */}
+      {/* Bottom Mobile Nav - Super Modern Floating Design */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 pb-safe pointer-events-none overflow-x-hidden w-full">
         <div className="mx-auto max-w-md w-full px-2 sm:px-3 pb-2 sm:pb-3 pt-1.5 pointer-events-auto">
-          <div className="flex justify-around items-stretch bg-white/95 backdrop-blur-md border border-gray-200/60 shadow-xl shadow-black/5 rounded-xl sm:rounded-2xl p-1">
-            {(
-              [
-                { id: "map", label: "Mapa", icon: Map },
-                { id: "reviews", label: "Reviews", icon: Star },
-                { id: "stats", label: "Stats", icon: TrendingUp },
-              ] as const
-            ).map((item) => {
-              const Icon = item.icon;
-              const active = activeTopTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => scrollToSection(item.id, item.id as any)}
-                  className={`flex-1 group relative overflow-hidden rounded-lg sm:rounded-xl px-2 sm:px-3 py-2 flex flex-col items-center justify-center gap-1 text-[10px] sm:text-[11px] font-medium transition-all duration-300 min-h-[48px] touch-manipulation ${
-                    active
-                      ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-white/80"
-                  }`}
-                  aria-label={item.label}
-                >
-                  <Icon
-                    className={`h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 ${
-                      active ? "scale-110" : "group-hover:scale-110"
+          {/* Floating container with enhanced glassmorphism */}
+          <div className="relative">
+            {/* Subtle glow effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-cyan-500/10 to-indigo-500/10 rounded-2xl sm:rounded-3xl blur-xl opacity-60 animate-pulse" />
+
+            <div className="relative flex justify-around items-stretch bg-white/90 backdrop-blur-xl border border-white/20 shadow-2xl shadow-blue-500/10 rounded-2xl sm:rounded-3xl p-1.5 ring-1 ring-white/30">
+              {(
+                [
+                  {
+                    id: "map",
+                    label: "Mapa",
+                    icon: Map,
+                    color: "from-blue-500 to-cyan-500",
+                  },
+                  {
+                    id: "reviews",
+                    label: "Reviews",
+                    icon: Star,
+                    color: "from-yellow-500 to-orange-500",
+                  },
+                  {
+                    id: "stats",
+                    label: "Stats",
+                    icon: TrendingUp,
+                    color: "from-emerald-500 to-teal-500",
+                  },
+                ] as const
+              ).map((item: any) => {
+                const Icon = item.icon;
+                const active = activeTopTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={
+                      item.action ||
+                      (() => scrollToSection(item.id, item.id as any))
+                    }
+                    className={`flex-1 group relative overflow-hidden rounded-xl sm:rounded-2xl px-2 sm:px-3 py-2.5 flex flex-col items-center justify-center gap-1.5 text-[10px] sm:text-[11px] font-semibold transition-all duration-500 min-h-[52px] touch-manipulation ${
+                      active
+                        ? `bg-gradient-to-r ${
+                            item.color
+                          } text-white shadow-lg shadow-${
+                            item.color.split(" ")[0]
+                          }/30 scale-105`
+                        : "text-gray-600 hover:text-gray-900 hover:bg-white/60 hover:scale-105"
                     }`}
-                  />
-                  <span>{item.label}</span>
-                  {active && (
-                    <span className="absolute inset-0 -z-10 opacity-40 bg-gradient-to-r from-blue-500/40 to-cyan-500/40 rounded-lg sm:rounded-xl" />
-                  )}
-                </button>
-              );
-            })}
+                    aria-label={item.label}
+                  >
+                    {/* Icon with enhanced animations */}
+                    <div
+                      className={`relative transition-all duration-500 ${
+                        active
+                          ? "scale-110 drop-shadow-lg"
+                          : "group-hover:scale-110"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                      {/* Active indicator glow */}
+                      {active && (
+                        <div
+                          className={`absolute inset-0 bg-gradient-to-r ${item.color} rounded-full blur-md opacity-50 animate-ping`}
+                        />
+                      )}
+                    </div>
+
+                    {/* Label with subtle animation */}
+                    <span
+                      className={`transition-all duration-300 ${
+                        active ? "font-bold" : "group-hover:font-semibold"
+                      }`}
+                    >
+                      {item.label}
+                    </span>
+
+                    {/* Active background overlay */}
+                    {active && (
+                      <div
+                        className={`absolute inset-0 bg-gradient-to-r ${item.color} opacity-10 rounded-xl sm:rounded-2xl animate-pulse`}
+                      />
+                    )}
+
+                    {/* Hover effect for inactive */}
+                    {!active && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl sm:rounded-2xl" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </nav>
