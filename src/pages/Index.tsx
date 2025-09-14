@@ -231,16 +231,20 @@ const Index = () => {
     };
   }, []);
 
-  // Filter bathrooms based on search
+  // Filter bathrooms based on search (name, building, or floor)
   const filteredBathrooms = bathroomData.filter(
     (bathroom) =>
       bathroom.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      bathroom.building.toLowerCase().includes(searchQuery.toLowerCase())
+      bathroom.building.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      bathroom.floor.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // For the map: filter by NAME only (as requested), so markers show only matching names
-  const mapFilteredByName = bathroomData.filter((b) =>
-    b.name.toLowerCase().includes(searchQuery.toLowerCase())
+  // For the map: same filtering as list for consistency
+  const mapFilteredByName = bathroomData.filter(
+    (b) =>
+      b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      b.building.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      b.floor.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Sort by distance: dynamic (if near IST) else fallback on static field
@@ -594,17 +598,39 @@ const Index = () => {
             <ChevronUp className="h-4 w-4 lg:h-5 lg:w-5" />
           </button>
         )}
-        {/* Search Section - Mobile Optimized */}
-        <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-xl sm:rounded-2xl blur-xl"></div>
-          <div className="relative bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
-            <SearchInput
-              placeholder="Buscar casa de banho..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-sm sm:text-base lg:text-lg bg-white/90 dark:bg-gray-800/90 border-gray-200/60 dark:border-gray-700/60 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all duration-200 h-10 sm:h-12 lg:h-14"
-            />
-          </div>
+
+        {/* Search Section - Minimalist & Modern */}
+        <div className="relative max-w-lg mx-auto">
+          <SearchInput
+            placeholder="Buscar por nome, edifício ou piso..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full"
+            inputClassName="h-10 text-sm rounded-xl pl-10 pr-10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400/50 transition-all duration-300 shadow-sm hover:shadow-md focus:shadow-lg"
+            iconClassName="text-slate-600 dark:text-slate-200 drop-shadow-sm h-[22px] w-[22px]"
+          />
+          {/* Clear Button */}
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              aria-label="Limpar busca"
+            >
+              <svg
+                className="w-full h-full"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Map Section - Mobile Optimized */}

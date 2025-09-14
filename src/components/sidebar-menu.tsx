@@ -1,5 +1,4 @@
-import { useState } from "react";
-import {
+﻿import {
   X,
   Home,
   Map,
@@ -39,7 +38,7 @@ export function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
     {
       icon: Star,
       label: "Top Avaliações",
-      href: "#top",
+      href: "#stats",
       description: "Melhores casas de banho",
     },
     // Comunidade removido a pedido
@@ -52,6 +51,11 @@ export function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
   ];
 
   const handleNavigation = (href: string) => {
+    if (href === "#") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      onClose();
+      return;
+    }
     if (href.startsWith("#")) {
       const element = document.querySelector(href) as HTMLElement | null;
       if (element) {
@@ -76,140 +80,170 @@ export function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
+      <style>
+        {`
+          /* Mobile optimizations */
+          @media (max-width: 640px) {
+            .sidebar-mobile-optimize {
+              -webkit-tap-highlight-color: transparent;
+              -webkit-touch-callout: none;
+              -webkit-user-select: none;
+              -khtml-user-select: none;
+              -moz-user-select: none;
+              -ms-user-select: none;
+              user-select: none;
+            }
+            
+            /* Improve scrolling on mobile */
+            .sidebar-scroll {
+              -webkit-overflow-scrolling: touch;
+              scroll-behavior: smooth;
+            }
+            
+            /* Better button interactions */
+            .mobile-button {
+              min-height: 44px;
+              touch-action: manipulation;
+            }
+          }
+        `}
+      </style>
       <SheetContent
-        side="rightCompact"
-        className="bg-gradient-to-br from-background/98 to-background/95 supports-[backdrop-filter]:backdrop-blur-xl border-l border-border/30 shadow-2xl z-[2000] rounded-l-2xl flex flex-col max-h-[100dvh] sm:max-h-screen p-2 sm:p-4"
+        side="right"
+        className="w-[90vw] max-w-[300px] xs:w-[85vw] xs:max-w-[280px] sm:w-[320px] bg-gradient-to-br from-background/98 via-background/96 to-background/95 supports-[backdrop-filter]:backdrop-blur-xl border-l border-border/30 shadow-2xl z-[2000] rounded-l-3xl rounded-tr-3xl flex flex-col max-h-[100dvh] sm:max-h-screen p-4 sm:p-4 [&>button]:hidden overflow-hidden animate-in slide-in-from-right-2 duration-300 sidebar-mobile-optimize"
       >
         <div className="flex-1 pr-0 sm:pr-1 py-0 sm:py-1">
-          {/* Modern Header */}
-          <SheetHeader className="pt-1 pb-1.5">
-            <SheetTitle className="text-left">
-              <div className="flex items-center gap-2.5 mb-1.5">
-                <div className="relative animate-float-soft">
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full blur-md opacity-35"></div>
-                  <img
-                    src="/Imagem2.png"
-                    alt="WC do Técnico"
-                    className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full shadow-md border-2 border-white/60 ring-2 ring-blue-500/20"
-                  />
+          {/* Modern Header with Custom Close Button */}
+          <div className="flex items-start justify-between mb-4">
+            <SheetHeader className="flex-1 p-0">
+              <SheetTitle className="text-left">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="relative animate-float-soft">
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full blur-md opacity-35"></div>
+                    <img
+                      src="/Imagem2.png"
+                      alt="WC do Técnico"
+                      className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full shadow-md border-2 border-white/60 ring-2 ring-blue-500/20"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-600 via-sky-600 to-cyan-600 bg-clip-text text-transparent block leading-tight">
+                      IST Toilet Tracker
+                    </span>
+                    <p className="text-sm text-muted-foreground/70 font-medium leading-tight">
+                      Instituto Superior Técnico
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-600 via-sky-600 to-cyan-600 bg-clip-text text-transparent">
-                    IST Toilet Tracker
-                  </span>
-                  <p className="text-xs text-muted-foreground/70 font-medium">
-                    Instituto Superior Técnico
-                  </p>
-                </div>
-              </div>
-              <div className="hidden sm:flex gap-2">
-                <Badge
-                  variant="secondary"
-                  className="text-xs bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border-blue-200/30"
-                >
-                  v1.0.0
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className="text-xs border-green-200/60 text-green-700"
-                >
-                  Beta
-                </Badge>
-              </div>
-            </SheetTitle>
-          </SheetHeader>
+              </SheetTitle>
+            </SheetHeader>
+            {/* Custom Close Button for Mobile */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-10 w-10 sm:h-10 sm:w-10 rounded-full bg-white/10 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-all duration-200 flex-shrink-0 ml-3 shadow-lg backdrop-blur-sm border border-white/20 active:scale-95"
+              aria-label="Fechar menu"
+            >
+              <X className="h-4 w-4 sm:h-5 sm:w-5" />
+            </Button>
+          </div>
 
-          <Separator className="my-1.5" />
+          <Separator className="my-3" />
 
           {/* Navigation Menu */}
-          <nav className="space-y-1.5 mb-3">
+          <nav className="space-y-1.5 mb-4">
             {menuItems.map((item, idx) => (
               <Button
                 key={item.label}
                 variant="ghost"
-                className="w-full justify-start text-left h-auto p-2 sm:p-2.5 text-foreground hover:bg-gradient-to-r hover:from-accent/50 hover:to-accent/30 transition-all duration-200 hover:shadow-sm rounded-xl group animate-menu-in opacity-0"
+                className="w-full justify-start text-left h-auto p-3 sm:p-2.5 text-foreground hover:bg-gradient-to-r hover:from-accent/50 hover:to-accent/30 transition-all duration-200 hover:shadow-sm rounded-2xl group animate-menu-in opacity-0 hover:scale-[1.01] active:scale-[0.99] touch-manipulation mobile-button"
                 onClick={() => handleNavigation(item.href)}
                 style={{ animationDelay: `${80 + idx * 60}ms` }}
               >
-                <div className="flex items-center gap-2.5 w-full">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center group-hover:from-primary/20 group-hover:to-primary/10 transition-all duration-200 group-hover:shadow-sm">
+                <div className="flex items-center gap-3 w-full">
+                  <div className="w-8 h-8 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center group-hover:from-primary/20 group-hover:to-primary/10 transition-all duration-200 group-hover:shadow-sm flex-shrink-0">
                     <item.icon className="h-4 w-4 text-primary group-hover:scale-110 transition-transform duration-200" />
                   </div>
-                  <div className="flex-1 text-left">
-                    <div className="font-medium text-sm">{item.label}</div>
+                  <div className="flex-1 text-left min-w-0">
+                    <div className="font-medium text-sm leading-tight">
+                      {item.label}
+                    </div>
                     <div className="hidden sm:block text-xs text-muted-foreground/70">
                       {item.description}
                     </div>
                   </div>
-                  <ExternalLink className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 group-hover:translate-x-0.5" />
+                  <ExternalLink className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 group-hover:translate-x-0.5 flex-shrink-0" />
                 </div>
               </Button>
             ))}
           </nav>
 
           {/* Social Links */}
-          <div className="space-y-2.5 mb-2.5">
-            <h4 className="text-sm font-semibold text-foreground/80">
+          <div className="space-y-3 mb-4">
+            <h4 className="text-sm font-semibold text-foreground/80 px-1">
               Conectar
             </h4>
-            <div className="flex gap-2">
+            <div className="space-y-2">
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 h-9 px-3 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-800 dark:to-blue-900 hover:from-blue-100 hover:to-blue-200 dark:hover:from-blue-700 dark:hover:to-blue-800 border-blue-200/60"
+                className="w-full h-11 px-4 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-800 dark:to-blue-900 hover:from-blue-100 hover:to-blue-200 dark:hover:from-blue-700 dark:hover:to-blue-800 border-blue-200/60 rounded-xl active:scale-95 transition-transform mobile-button"
               >
-                <Mail className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Email</span>
+                <Mail className="h-4 w-4 mr-3" />
+                <span className="font-medium">Email</span>
+              </Button>
+              <Button
+                className="w-full h-11 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white text-sm rounded-xl shadow active:scale-95 transition-transform mobile-button"
+                onClick={() =>
+                  handleNavigation("https://github.com/franciscogfsm/caganisto")
+                }
+              >
+                <Github className="h-4 w-4 mr-3" /> Contribuir no GitHub
               </Button>
             </div>
-            <Button
-              className="w-full h-9 mt-1.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white text-xs rounded-xl shadow"
-              onClick={() =>
-                handleNavigation("https://github.com/franciscogfsm/caganisto")
-              }
-            >
-              <Github className="h-3.5 w-3.5 mr-2" /> Contribuir no GitHub
-            </Button>
           </div>
         </div>
 
         {/* Quick actions to fill bottom space */}
-        <div className="pt-1 pb-2">
-          <div className="rounded-xl border border-border/30 bg-gradient-to-br from-card/60 to-card/30 p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-muted-foreground">
+        <div className="pt-2 pb-3">
+          <div className="rounded-2xl border border-border/30 bg-gradient-to-br from-card/60 to-card/30 p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium text-muted-foreground">
                 Ações rápidas
               </span>
-              <span className="text-[10px] text-muted-foreground/70">beta</span>
+              <span className="text-[10px] text-muted-foreground/70 bg-muted/50 px-2 py-1 rounded-full font-medium">
+                beta
+              </span>
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               <Button
                 variant="secondary"
                 size="sm"
-                className="h-8 text-xs"
-                onClick={() => handleNavigation("#top")}
+                className="h-10 text-sm px-3 rounded-xl hover:scale-105 active:scale-95 transition-transform touch-manipulation mobile-button"
+                onClick={() => handleNavigation("#stats")}
               >
-                <Star className="h-3.5 w-3.5 mr-1.5" /> Top 5
+                <Star className="h-4 w-4 mr-2" /> Top 5
               </Button>
               <Button
                 variant="secondary"
                 size="sm"
-                className="h-8 text-xs"
+                className="h-10 text-sm px-3 rounded-xl hover:scale-105 active:scale-95 transition-transform touch-manipulation mobile-button"
                 onClick={() => handleNavigation("#map")}
               >
-                <Map className="h-3.5 w-3.5 mr-1.5" /> Mapa
+                <Map className="h-4 w-4 mr-2" /> Mapa
               </Button>
             </div>
           </div>
         </div>
 
         {/* Footer (in flow, no overlay) */}
-        <div className="pt-2 border-t border-border/30">
-          <div className="bg-gradient-to-r from-gray-50/80 to-gray-100/60 dark:from-gray-800/80 dark:to-gray-900/60 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-gray-200/30 dark:border-gray-700/30">
-            <div className="text-center space-y-2">
+        <div className="pt-3 border-t border-border/30">
+          <div className="bg-gradient-to-r from-gray-50/80 via-gray-100/60 to-gray-50/80 dark:from-gray-800/80 dark:via-gray-900/60 dark:to-gray-800/80 backdrop-blur-sm rounded-2xl p-4 border border-gray-200/30 dark:border-gray-700/30 shadow-sm">
+            <div className="text-center space-y-3">
               <div className="flex items-center justify-center gap-2">
-                <Heart className="h-3 w-3 text-red-500 animate-pulse" />
-                <span className="text-xs text-muted-foreground/80 font-medium">
+                <Heart className="h-4 w-4 text-red-500 animate-pulse" />
+                <span className="text-sm text-muted-foreground/80 font-medium">
                   Feito por estudantes do IST
                 </span>
               </div>
@@ -217,7 +251,7 @@ export function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-auto p-0 text-xs text-muted-foreground/60 hover:text-muted-foreground"
+                  className="h-auto p-0 text-xs text-muted-foreground/60 hover:text-muted-foreground rounded-lg hover:bg-accent/50"
                   onClick={() =>
                     handleNavigation(
                       "https://github.com/franciscogfsm/caganisto"
