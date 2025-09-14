@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback, memo } from "react";
 import {
   Menu,
   Target,
@@ -35,15 +35,100 @@ import { bathrooms, Bathroom, Review } from "@/data/bathrooms";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Suspense, lazy } from "react";
 
-// Lazy-load MapWithFilters for performance
+// Lazy-load heavy components for better performance
 const LazyMapWithFilters = lazy(() =>
   import("@/components/map-with-filters").then((m) => ({
     default: m.MapWithFilters,
   }))
 );
 
+const LazyBathroomCard = lazy(() =>
+  import("@/components/bathroom-card").then((m) => ({
+    default: m.BathroomCard,
+  }))
+);
+
+const LazyBathroomDetails = lazy(() =>
+  import("@/components/bathroom-details").then((m) => ({
+    default: m.BathroomDetails,
+  }))
+);
+
+const LazyReviewForm = lazy(() =>
+  import("@/components/review-form").then((m) => ({
+    default: m.ReviewForm,
+  }))
+);
+
+const LazySidebarMenu = lazy(() =>
+  import("@/components/sidebar-menu").then((m) => ({
+    default: m.SidebarMenu,
+  }))
+);
+
+// Skeleton Components for better loading experience
+const LeaderboardSkeleton = memo(() => (
+  <div className="space-y-2">
+    {Array.from({ length: 5 }).map((_, i) => (
+      <div
+        key={i}
+        className="flex items-center gap-3 p-3 rounded-xl bg-white/60 backdrop-blur-sm border border-gray-200/40"
+      >
+        <Skeleton className="w-7 h-7 rounded-full" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-3 w-1/2" />
+        </div>
+        <Skeleton className="w-8 h-4" />
+      </div>
+    ))}
+  </div>
+));
+
+const StatsCardSkeleton = memo(() => (
+  <Card className="border-gray-200/60 bg-white/60 backdrop-blur-sm">
+    <CardContent className="p-4 text-center">
+      <Skeleton className="w-12 h-12 rounded-full mx-auto mb-3" />
+      <Skeleton className="h-4 w-20 mx-auto mb-2" />
+      <Skeleton className="h-6 w-16 mx-auto" />
+    </CardContent>
+  </Card>
+));
+
+const ClosestBathroomSkeleton = memo(() => (
+  <div className="space-y-3">
+    <div className="flex items-center gap-3">
+      <Skeleton className="w-8 h-8 rounded-full" />
+      <Skeleton className="h-6 w-48" />
+    </div>
+    <Card className="border-gray-200/60 bg-white/60 backdrop-blur-sm">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <Skeleton className="w-12 h-12 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+          <Skeleton className="w-8 h-5" />
+        </div>
+        <Skeleton className="h-4 w-16" />
+      </CardContent>
+    </Card>
+  </div>
+));
+
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+
+  // Debounce search query to improve performance
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300); // 300ms debounce delay
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
   const [selectedBathroom, setSelectedBathroom] = useState<Bathroom | null>(
     null
   );
@@ -65,6 +150,12 @@ const Index = () => {
     defaultFloor: "0" as string | null, // R/C default
   };
 
+  // Loading states for skeleton components
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [leaderboardLoaded, setLeaderboardLoaded] = useState(false);
+  const [statsLoaded, setStatsLoaded] = useState(false);
+  const [closestBathroomLoaded, setClosestBathroomLoaded] = useState(false);
+
   // Consistent header offset for scroll calculations (avoid mismatched 72 vs 80)
   const HEADER_OFFSET = 72; // px - adjusted for better mobile scroll positioning
 
@@ -72,35 +163,6 @@ const Index = () => {
   const [topFilter, setTopFilter] = useState<
     "rating" | "cleanliness" | "paper"
   >("rating");
-
-  // Derived pickers for review selector
-  const buildings = Array.from(
-    new Set(bathroomData.map((b) => b.building))
-  ).sort((a, b) => a.localeCompare(b));
-  const floorsForBuilding = Array.from(
-    new Set(
-      bathroomData
-        .filter((b) =>
-          selectedBuilding ? b.building === selectedBuilding : true
-        )
-        .map((b) => b.floor)
-    )
-  ).sort((a, b) => a.localeCompare(b));
-  const bathroomsForPicker = bathroomData
-    .filter((b) => (selectedBuilding ? b.building === selectedBuilding : true))
-    .filter((b) => (selectedFloor ? b.floor === selectedFloor : true))
-    .slice()
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  const scrollToMap = () => {
-    const el = document.getElementById("map");
-    if (!el) return;
-    const headerOffset = HEADER_OFFSET;
-    const rect = el.getBoundingClientRect();
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-    const top = rect.top + scrollTop - headerOffset;
-    window.scrollTo({ top, behavior: "smooth" });
-  };
 
   // IST geolocation helpers (kept local to avoid cross-file coupling)
   const IST_CENTER: [number, number] = [38.7369, -9.1395];
@@ -215,93 +277,162 @@ const Index = () => {
     return () => obs.disconnect();
   }, []);
 
-  // Always start at top on reload and control scroll restoration
+  // Simulate initial loading and set loading states
   useEffect(() => {
-    const supports = "scrollRestoration" in history;
-    if (supports) history.scrollRestoration = "manual";
-    // move to top asap
-    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
-    // show back-to-top button when scrolled
-    const onScroll = () => setShowBackToTop(window.scrollY > 400);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (supports) history.scrollRestoration = "auto";
-    };
+    const timer = setTimeout(() => {
+      setIsInitialLoad(false);
+      setLeaderboardLoaded(true);
+      setStatsLoaded(true);
+      setClosestBathroomLoaded(true);
+    }, 800); // Simulate loading time
+
+    return () => clearTimeout(timer);
   }, []);
 
-  // Filter bathrooms based on search (name, building, or floor)
-  const filteredBathrooms = bathroomData.filter(
-    (bathroom) =>
-      bathroom.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      bathroom.building.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      bathroom.floor.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // For the map: same filtering as list for consistency
-  const mapFilteredByName = bathroomData.filter(
-    (b) =>
-      b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      b.building.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      b.floor.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // Sort by distance: dynamic (if near IST) else fallback on static field
-  const withDynamicDistance = (
-    list: Bathroom[]
-  ): (Bathroom & {
-    dynamicDistance?: number;
-  })[] => {
-    if (!(isNearIST && userLocation && locationStatus === "enabled"))
-      return list.map((b) => ({ ...b }));
-    return list.map((b) => {
-      const [lat, lng] = convertToRealCoords(b.x, b.y);
-      const d = calculateDistance(userLocation[0], userLocation[1], lat, lng);
-      return { ...b, dynamicDistance: d };
-    });
+  const scrollToMap = () => {
+    const el = document.getElementById("map");
+    if (!el) return;
+    const headerOffset = HEADER_OFFSET;
+    const rect = el.getBoundingClientRect();
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const top = rect.top + scrollTop - headerOffset;
+    window.scrollTo({ top, behavior: "smooth" });
   };
-
-  const sortedBathrooms = withDynamicDistance(filteredBathrooms).sort(
-    (a, b) => {
-      const da = a.dynamicDistance ?? a.distance;
-      const db = b.dynamicDistance ?? b.distance;
-      return da - db;
-    }
-  );
-
-  // Top 5 across the whole dataset (not affected by search), tie-break by review count
-  const topBathroomsBase = [...bathroomData]
-    .sort((a, b) => {
-      if (topFilter === "cleanliness") {
-        const cleanlinessOrder = {
-          "Sempre limpo": 3,
-          "Geralmente limpo": 2,
-          "Às vezes limpo": 1,
-        };
-        const aClean =
-          cleanlinessOrder[a.cleanliness as keyof typeof cleanlinessOrder] || 0;
-        const bClean =
-          cleanlinessOrder[b.cleanliness as keyof typeof cleanlinessOrder] || 0;
-        if (aClean !== bClean) return bClean - aClean;
-      } else if (topFilter === "paper") {
-        const paperOrder = { Bom: 3, Médio: 2, Fraco: 1 };
-        const aPaper =
-          paperOrder[a.paperSupply as keyof typeof paperOrder] || 0;
-        const bPaper =
-          paperOrder[b.paperSupply as keyof typeof paperOrder] || 0;
-        if (aPaper !== bPaper) return bPaper - aPaper;
-      }
-      // Default to rating sort
-      return b.rating !== a.rating
-        ? b.rating - a.rating
-        : b.reviewCount - a.reviewCount;
-    })
-    .slice(0, 5);
-  const topBathrooms = withDynamicDistance(topBathroomsBase);
 
   // Respect user setting to hide distance when off campus
   const showOffCampusDistance = settings.showDistanceOffCampus;
+
+  // Memoized calculations for performance optimization
+  const buildings = useMemo(
+    () =>
+      Array.from(new Set(bathroomData.map((b) => b.building))).sort((a, b) =>
+        a.localeCompare(b)
+      ),
+    [bathroomData]
+  );
+
+  const floorsForBuilding = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          bathroomData
+            .filter((b) =>
+              selectedBuilding ? b.building === selectedBuilding : true
+            )
+            .map((b) => b.floor)
+        )
+      ).sort((a, b) => a.localeCompare(b)),
+    [bathroomData, selectedBuilding]
+  );
+
+  const bathroomsForPicker = useMemo(
+    () =>
+      bathroomData
+        .filter((b) =>
+          selectedBuilding ? b.building === selectedBuilding : true
+        )
+        .filter((b) => (selectedFloor ? b.floor === selectedFloor : true))
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [bathroomData, selectedBuilding, selectedFloor]
+  );
+
+  // Filter bathrooms based on search (name, building, or floor)
+  const filteredBathrooms = useMemo(
+    () =>
+      bathroomData.filter(
+        (bathroom) =>
+          bathroom.name
+            .toLowerCase()
+            .includes(debouncedSearchQuery.toLowerCase()) ||
+          bathroom.building
+            .toLowerCase()
+            .includes(debouncedSearchQuery.toLowerCase()) ||
+          bathroom.floor
+            .toLowerCase()
+            .includes(debouncedSearchQuery.toLowerCase())
+      ),
+    [bathroomData, debouncedSearchQuery]
+  );
+
+  // For the map: same filtering as list for consistency
+  const mapFilteredByName = useMemo(
+    () =>
+      bathroomData.filter(
+        (b) =>
+          b.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+          b.building
+            .toLowerCase()
+            .includes(debouncedSearchQuery.toLowerCase()) ||
+          b.floor.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+      ),
+    [bathroomData, debouncedSearchQuery]
+  );
+
+  // Sort by distance: dynamic (if near IST) else fallback on static field
+  const withDynamicDistance = useCallback(
+    (
+      list: Bathroom[]
+    ): (Bathroom & {
+      dynamicDistance?: number;
+    })[] => {
+      if (!(isNearIST && userLocation && locationStatus === "enabled"))
+        return list.map((b) => ({ ...b }));
+      return list.map((b) => {
+        const [lat, lng] = convertToRealCoords(b.x, b.y);
+        const d = calculateDistance(userLocation[0], userLocation[1], lat, lng);
+        return { ...b, dynamicDistance: d };
+      });
+    },
+    [isNearIST, userLocation, locationStatus]
+  );
+
+  const sortedBathrooms = useMemo(
+    () =>
+      withDynamicDistance(filteredBathrooms).sort((a, b) => {
+        const da = a.dynamicDistance ?? a.distance;
+        const db = b.dynamicDistance ?? b.distance;
+        return da - db;
+      }),
+    [filteredBathrooms, withDynamicDistance]
+  );
+
+  // Top 5 across the whole dataset (not affected by search), tie-break by review count
+  const topBathroomsBase = useMemo(
+    () =>
+      [...bathroomData]
+        .sort((a, b) => {
+          // Always sort by rating first, then by review count
+          if (b.rating !== a.rating) {
+            return b.rating - a.rating;
+          }
+          return b.reviewCount - a.reviewCount;
+        })
+        .slice(0, 5),
+    [bathroomData]
+  );
+
+  const topBathrooms = useMemo(
+    () => withDynamicDistance(topBathroomsBase),
+    [topBathroomsBase, withDynamicDistance]
+  );
+
+  // Memoized stats calculations
+  const totalReviews = useMemo(
+    () => bathroomData.reduce((sum, b) => sum + b.reviewCount, 0),
+    [bathroomData]
+  );
+
+  const avgRating = useMemo(
+    () =>
+      bathroomData.reduce((sum, b) => sum + b.rating, 0) / bathroomData.length,
+    [bathroomData]
+  );
+
+  const buildingsCount = useMemo(
+    () => new Set(bathroomData.map((b) => b.building)).size,
+    [bathroomData]
+  );
 
   // Scroll-in animation for Top 5
   const [visibleTopIndices, setVisibleTopIndices] = useState<Set<number>>(
@@ -311,7 +442,7 @@ const Index = () => {
 
   // Special highlight for first place
   const [firstPlaceHighlighted, setFirstPlaceHighlighted] = useState(false);
-  const firstPlaceRef = useRef<HTMLDivElement | null>(null);
+  const firstPlaceRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     const container = topListRef.current;
@@ -406,12 +537,6 @@ const Index = () => {
 
     return count;
   };
-
-  // Calculate stats values
-  const totalReviews = bathroomData.reduce((sum, b) => sum + b.reviewCount, 0);
-  const avgRating =
-    bathroomData.reduce((sum, b) => sum + b.rating, 0) / bathroomData.length;
-  const buildingsCount = new Set(bathroomData.map((b) => b.building)).size;
 
   // Animated counters
   const animatedTotalReviews = useCountUp(totalReviews, 1500, statsVisible);
@@ -876,19 +1001,37 @@ const Index = () => {
                     sortedBathrooms[0].distance}{" "}
                   m
                 </div>
-                <BathroomCard
-                  {...sortedBathrooms[0]}
-                  distance={
-                    isNearIST && locationStatus === "enabled"
-                      ? sortedBathrooms[0].dynamicDistance ??
-                        sortedBathrooms[0].distance
-                      : undefined
+                <Suspense
+                  fallback={
+                    <Card className="border-gray-200/60 bg-white/60 backdrop-blur-sm">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-3 mb-3">
+                          <Skeleton className="w-12 h-12 rounded-full" />
+                          <div className="flex-1 space-y-2">
+                            <Skeleton className="h-5 w-32" />
+                            <Skeleton className="h-4 w-24" />
+                          </div>
+                          <Skeleton className="w-8 h-5" />
+                        </div>
+                        <Skeleton className="h-4 w-16" />
+                      </CardContent>
+                    </Card>
                   }
-                  isClosest
-                  onViewDetails={() =>
-                    handleViewBathroomDetails(sortedBathrooms[0])
-                  }
-                />
+                >
+                  <LazyBathroomCard
+                    {...sortedBathrooms[0]}
+                    distance={
+                      isNearIST && locationStatus === "enabled"
+                        ? sortedBathrooms[0].dynamicDistance ??
+                          sortedBathrooms[0].distance
+                        : undefined
+                    }
+                    isClosest
+                    onViewDetails={() =>
+                      handleViewBathroomDetails(sortedBathrooms[0])
+                    }
+                  />
+                </Suspense>
               </>
             ) : (
               <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3 px-3 py-1 bg-gray-50 dark:bg-gray-800/60 rounded-full inline-block">
@@ -1061,174 +1204,176 @@ const Index = () => {
             className="space-y-1 sm:space-y-2 contain-inline"
             ref={topListRef}
           >
-            {topBathrooms.map((bathroom, index) => {
-              const displayDistance = isNearIST
-                ? bathroom.dynamicDistance ?? bathroom.distance
-                : showOffCampusDistance
-                ? bathroom.distance
-                : undefined;
+            {topBathrooms.length > 0
+              ? topBathrooms.map((bathroom, index) => {
+                  const displayDistance = isNearIST
+                    ? bathroom.dynamicDistance ?? bathroom.distance
+                    : showOffCampusDistance
+                    ? bathroom.distance
+                    : undefined;
 
-              const isFirstPlace = index === 0;
-              const isThirdPlace = index === 2; // Remove highlight from third place
+                  const isFirstPlace = index === 0;
+                  const isThirdPlace = index === 2; // Remove highlight from third place
 
-              return (
-                <button
-                  key={bathroom.id}
-                  ref={isFirstPlace ? firstPlaceRef : null}
-                  data-top-item
-                  data-index={index}
-                  className={`
-                    group relative flex w-full items-center gap-3 p-2 sm:p-3 rounded-lg sm:rounded-xl text-left
-                    bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm
-                    border border-gray-200/40 dark:border-gray-700/40
-                    hover:bg-white/80 dark:hover:bg-gray-900/80
-                    hover:border-gray-300/60 dark:hover:border-gray-600/60
-                    transition-all duration-300 ease-out
-                    hover:shadow-md hover:shadow-blue-500/10
-                    cursor-pointer select-none touch-manipulation
-                    focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900
-                    active:scale-[0.98] active:translate-y-[1px]
-                    ${
-                      isFirstPlace && firstPlaceHighlighted
-                        ? "ring-2 ring-yellow-400/50 shadow-lg shadow-yellow-500/20"
-                        : ""
-                    }
-                    ${
-                      visibleTopIndices.has(index)
-                        ? "opacity-100 translate-x-0 scale-100"
-                        : "opacity-0 -translate-x-2 scale-95"
-                    }
-                  `}
-                  style={{
-                    transitionDelay: `${index * 80}ms`,
-                    transitionProperty:
-                      "opacity, transform, background-color, border-color, box-shadow",
-                  }}
-                  type="button"
-                  aria-label={`Ver detalhes de ${bathroom.name}`}
-                  aria-haspopup="dialog"
-                  onClick={() => handleViewBathroomDetails(bathroom)}
-                >
-                  {/* Special first place glow effect */}
-                  {isFirstPlace && firstPlaceHighlighted && (
-                    <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/10 via-orange-400/5 to-yellow-400/10 rounded-lg sm:rounded-xl animate-pulse" />
-                  )}
+                  return (
+                    <button
+                      key={bathroom.id}
+                      ref={isFirstPlace ? firstPlaceRef : null}
+                      data-top-item
+                      data-index={index}
+                      className={`
+                      group relative flex w-full items-center gap-3 p-2 sm:p-3 rounded-lg sm:rounded-xl text-left
+                      bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm
+                      border border-gray-200/40 dark:border-gray-700/40
+                      hover:bg-white/80 dark:hover:bg-gray-900/80
+                      hover:border-gray-300/60 dark:hover:border-gray-600/60
+                      transition-all duration-300 ease-out
+                      hover:shadow-md hover:shadow-blue-500/10
+                      cursor-pointer select-none touch-manipulation
+                      focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900
+                      active:scale-[0.98] active:translate-y-[1px]
+                      ${
+                        isFirstPlace && firstPlaceHighlighted
+                          ? "ring-2 ring-yellow-400/50 shadow-lg shadow-yellow-500/20"
+                          : ""
+                      }
+                      ${
+                        visibleTopIndices.has(index)
+                          ? "opacity-100 translate-x-0 scale-100"
+                          : "opacity-0 -translate-x-2 scale-95"
+                      }
+                    `}
+                      style={{
+                        transitionDelay: `${index * 80}ms`,
+                        transitionProperty:
+                          "opacity, transform, background-color, border-color, box-shadow",
+                      }}
+                      type="button"
+                      aria-label={`Ver detalhes de ${bathroom.name}`}
+                      aria-haspopup="dialog"
+                      onClick={() => handleViewBathroomDetails(bathroom)}
+                    >
+                      {/* Special first place glow effect */}
+                      {isFirstPlace && firstPlaceHighlighted && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/10 via-orange-400/5 to-yellow-400/10 rounded-lg sm:rounded-xl animate-pulse" />
+                      )}
 
-                  {/* Rank Number - Special for first place */}
-                  <div
-                    className={`
-                    relative flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full
-                    flex items-center justify-center text-xs font-bold
-                    transition-all duration-300 group-hover:scale-110
-                    ${
-                      isFirstPlace
-                        ? "bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-sm ring-2 ring-yellow-300/30"
-                        : isThirdPlace
-                        ? "bg-gradient-to-r from-blue-400 to-blue-500 text-white shadow-sm" // Remove special styling from third
-                        : index === 1
-                        ? "bg-gradient-to-r from-gray-300 to-gray-400 text-white shadow-sm"
-                        : index === 3
-                        ? "bg-gradient-to-r from-purple-400 to-purple-500 text-white shadow-sm"
-                        : "bg-gradient-to-r from-green-400 to-green-500 text-white shadow-sm"
-                    }
-                  `}
-                  >
-                    {index + 1}
-                    {/* Special glow for first place */}
-                    {isFirstPlace && firstPlaceHighlighted && (
-                      <div className="absolute inset-0 rounded-full bg-yellow-300/40 animate-ping" />
-                    )}
-                    {/* Crown for first place */}
-                    {isFirstPlace && (
-                      <div className="absolute -top-1 -right-1 text-yellow-300 text-xs opacity-80 animate-bounce">
-                        👑
+                      {/* Rank Number - Special for first place */}
+                      <div
+                        className={`
+                      relative flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full
+                      flex items-center justify-center text-xs font-bold
+                      transition-all duration-300 group-hover:scale-110
+                      ${
+                        isFirstPlace
+                          ? "bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-sm ring-2 ring-yellow-300/30"
+                          : isThirdPlace
+                          ? "bg-gradient-to-r from-blue-400 to-blue-500 text-white shadow-sm" // Remove special styling from third
+                          : index === 1
+                          ? "bg-gradient-to-r from-gray-300 to-gray-400 text-white shadow-sm"
+                          : index === 3
+                          ? "bg-gradient-to-r from-purple-400 to-purple-500 text-white shadow-sm"
+                          : "bg-gradient-to-r from-green-400 to-green-500 text-white shadow-sm"
+                      }
+                    `}
+                      >
+                        {index + 1}
+                        {/* Special glow for first place */}
+                        {isFirstPlace && firstPlaceHighlighted && (
+                          <div className="absolute inset-0 rounded-full bg-yellow-300/40 animate-ping" />
+                        )}
+                        {/* Crown for first place */}
+                        {isFirstPlace && (
+                          <div className="absolute -top-1 -right-1 text-yellow-300 text-xs opacity-80 animate-bounce">
+                            👑
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
 
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
+                      {/* Content */}
                       <div className="flex-1 min-w-0">
-                        <h3
-                          className={`font-semibold text-gray-900 dark:text-gray-100 text-sm sm:text-base truncate transition-colors duration-200 ${
-                            isFirstPlace && firstPlaceHighlighted
-                              ? "text-yellow-700 dark:text-yellow-300"
-                              : "group-hover:text-blue-600 dark:group-hover:text-blue-400"
-                          }`}
-                        >
-                          {bathroom.name}
-                          {isFirstPlace && firstPlaceHighlighted && (
-                            <span className="ml-2 text-xs text-yellow-600 dark:text-yellow-400 font-bold animate-pulse">
-                              🏆 #1
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            <h3
+                              className={`font-semibold text-gray-900 dark:text-gray-100 text-sm sm:text-base truncate transition-colors duration-200 ${
+                                isFirstPlace && firstPlaceHighlighted
+                                  ? "text-yellow-700 dark:text-yellow-300"
+                                  : "group-hover:text-blue-600 dark:group-hover:text-blue-400"
+                              }`}
+                            >
+                              {bathroom.name}
+                              {isFirstPlace && firstPlaceHighlighted && (
+                                <span className="ml-2 text-xs text-yellow-600 dark:text-yellow-400 font-bold animate-pulse">
+                                  🏆 #1
+                                </span>
+                              )}
+                            </h3>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                              {bathroom.building} • {bathroom.floor}
+                            </p>
+                          </div>
+
+                          {/* Rating - Special for first place */}
+                          <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                            <Star
+                              className={`h-3 w-3 sm:h-3.5 sm:w-3.5 fill-yellow-400 text-yellow-400 ${
+                                isFirstPlace && firstPlaceHighlighted
+                                  ? "animate-pulse scale-110"
+                                  : ""
+                              }`}
+                            />
+                            <span
+                              className={`text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 ${
+                                isFirstPlace && firstPlaceHighlighted
+                                  ? "text-yellow-600 dark:text-yellow-400"
+                                  : ""
+                              }`}
+                            >
+                              {bathroom.rating}
                             </span>
-                          )}
-                        </h3>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                          {bathroom.building} • {bathroom.floor}
-                        </p>
+                          </div>
+                        </div>
+
+                        {/* Distance - Only show if available */}
+                        {displayDistance !== undefined && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <MapPin className="h-2.5 w-2.5 text-gray-400" />
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {displayDistance}m
+                            </span>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Rating - Special for first place */}
-                      <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-                        <Star
-                          className={`h-3 w-3 sm:h-3.5 sm:w-3.5 fill-yellow-400 text-yellow-400 ${
-                            isFirstPlace && firstPlaceHighlighted
-                              ? "animate-pulse scale-110"
-                              : ""
-                          }`}
-                        />
-                        <span
-                          className={`text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 ${
-                            isFirstPlace && firstPlaceHighlighted
-                              ? "text-yellow-600 dark:text-yellow-400"
-                              : ""
-                          }`}
-                        >
-                          {bathroom.rating}
-                        </span>
+                      {/* Special first place particles */}
+                      {isFirstPlace && firstPlaceHighlighted && (
+                        <div className="absolute inset-0 pointer-events-none">
+                          <div
+                            className="absolute top-2 right-2 w-1 h-1 bg-yellow-400 rounded-full animate-ping"
+                            style={{ animationDelay: "0s" }}
+                          />
+                          <div
+                            className="absolute top-4 right-4 w-1 h-1 bg-orange-400 rounded-full animate-ping"
+                            style={{ animationDelay: "0.5s" }}
+                          />
+                          <div
+                            className="absolute bottom-2 left-2 w-1 h-1 bg-yellow-300 rounded-full animate-ping"
+                            style={{ animationDelay: "1s" }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Hover Arrow */}
+                      <div
+                        className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-all duration-300 transform group-hover:translate-x-1"
+                        aria-hidden="true"
+                      >
+                        <Info className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500" />
                       </div>
-                    </div>
-
-                    {/* Distance - Only show if available */}
-                    {displayDistance !== undefined && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <MapPin className="h-2.5 w-2.5 text-gray-400" />
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {displayDistance}m
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Special first place particles */}
-                  {isFirstPlace && firstPlaceHighlighted && (
-                    <div className="absolute inset-0 pointer-events-none">
-                      <div
-                        className="absolute top-2 right-2 w-1 h-1 bg-yellow-400 rounded-full animate-ping"
-                        style={{ animationDelay: "0s" }}
-                      />
-                      <div
-                        className="absolute top-4 right-4 w-1 h-1 bg-orange-400 rounded-full animate-ping"
-                        style={{ animationDelay: "0.5s" }}
-                      />
-                      <div
-                        className="absolute bottom-2 left-2 w-1 h-1 bg-yellow-300 rounded-full animate-ping"
-                        style={{ animationDelay: "1s" }}
-                      />
-                    </div>
-                  )}
-
-                  {/* Hover Arrow */}
-                  <div
-                    className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-all duration-300 transform group-hover:translate-x-1"
-                    aria-hidden="true"
-                  >
-                    <Info className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500" />
-                  </div>
-                </button>
-              );
-            })}
+                    </button>
+                  );
+                })
+              : null}
           </div>
 
           {/* Interactive Statistics Cards */}
@@ -1257,301 +1402,315 @@ const Index = () => {
 
             {/* Stats Grid with Staggered Animation */}
             <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              {/* Total Reviews */}
-              <Card
-                className={`group relative overflow-hidden border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-purple-50/70 to-pink-100/50 dark:from-purple-950/20 dark:to-pink-900/10 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-500 hover:scale-[1.02] cursor-pointer active:scale-[0.98] touch-manipulation ${
-                  statsVisible
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-8"
-                }`}
-                style={{ transitionDelay: statsVisible ? "300ms" : "0ms" }}
-              >
-                {/* Animated background gradient */}
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-400/0 via-pink-400/0 to-purple-400/0 group-hover:from-purple-400/10 group-hover:via-pink-400/5 group-hover:to-purple-400/10 transition-all duration-700" />
-
-                {/* Mobile touch indicator */}
-                <div className="absolute top-2 right-2 md:hidden">
-                  <div className="w-6 h-6 bg-purple-500/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-purple-300/30">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
-                  </div>
-                </div>
-
-                <CardContent className="relative p-4 sm:p-5 text-center">
-                  {/* Pulsing icon */}
-                  <div className="relative mx-auto mb-3 w-12 h-12 sm:w-14 sm:h-14">
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-pulse opacity-20 group-hover:opacity-40 transition-opacity duration-300" />
-                    <div className="relative w-full h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
-                      <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-                    </div>
-                  </div>
-
-                  <p className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1 group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors duration-300">
-                    Total de Reviews
-                  </p>
-
-                  {/* Animated counter */}
-                  <div className="relative">
-                    <p className="text-xl sm:text-2xl font-black text-purple-600 dark:text-purple-400 tracking-tight group-hover:scale-110 transition-transform duration-300">
-                      {animatedTotalReviews.toLocaleString()}
-                    </p>
-                    {/* Sparkle effect on hover */}
-                    <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <Sparkles className="h-4 w-4 text-yellow-400 animate-pulse" />
-                    </div>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="mt-3 w-full bg-purple-100 dark:bg-purple-900/30 rounded-full h-1.5 overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-1000 ease-out"
-                      style={{
-                        width: statsVisible
-                          ? `${Math.min(
-                              (animatedTotalReviews / totalReviews) * 100,
-                              100
-                            )}%`
-                          : "0%",
-                      }}
-                    />
-                  </div>
-
-                  {/* Mobile hint */}
-                  <div className="mt-2 md:hidden">
-                    <p className="text-[10px] text-purple-600/70 dark:text-purple-400/70 font-medium">
-                      Toque para explorar →
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Average Rating */}
-              <Card
-                className={`group relative overflow-hidden border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-amber-50/70 to-yellow-100/50 dark:from-amber-950/20 dark:to-yellow-900/10 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-500 hover:scale-[1.02] cursor-pointer active:scale-[0.98] touch-manipulation ${
-                  statsVisible
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-8"
-                }`}
-                style={{ transitionDelay: statsVisible ? "500ms" : "0ms" }}
-              >
-                {/* Animated background gradient */}
-                <div className="absolute inset-0 bg-gradient-to-r from-amber-400/0 via-yellow-400/0 to-amber-400/0 group-hover:from-amber-400/10 group-hover:via-yellow-400/5 group-hover:to-amber-400/10 transition-all duration-700" />
-
-                {/* Mobile touch indicator */}
-                <div className="absolute top-2 right-2 md:hidden">
-                  <div className="w-6 h-6 bg-amber-500/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-amber-300/30">
-                    <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
-                  </div>
-                </div>
-
-                <CardContent className="relative p-4 sm:p-5 text-center">
-                  {/* Pulsing icon */}
-                  <div className="relative mx-auto mb-3 w-12 h-12 sm:w-14 sm:h-14">
-                    <div className="absolute inset-0 bg-gradient-to-r from-amber-500 to-yellow-500 rounded-full animate-pulse opacity-20 group-hover:opacity-40 transition-opacity duration-300" />
-                    <div className="relative w-full h-full bg-gradient-to-r from-amber-500 to-yellow-500 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
-                      <Star className="h-5 w-5 sm:h-6 sm:w-6 text-white fill-white" />
-                    </div>
-                  </div>
-
-                  <p className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1 group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors duration-300">
-                    Avaliação Média
-                  </p>
-
-                  {/* Animated counter */}
-                  <div className="relative">
-                    <p className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 tracking-tight group-hover:scale-110 transition-transform duration-300">
-                      {animatedAvgRating.toFixed(1)}
-                      <span className="text-lg sm:text-xl ml-1">★</span>
-                    </p>
-                    {/* Sparkle effect on hover */}
-                    <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <Sparkles className="h-4 w-4 text-yellow-400 animate-pulse" />
-                    </div>
-                  </div>
-
-                  {/* Rating visualization */}
-                  <div className="mt-3 flex justify-center space-x-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star
-                        key={star}
-                        className={`h-3 w-3 transition-all duration-500 ${
-                          star <= Math.floor(animatedAvgRating)
-                            ? "text-amber-400 fill-amber-400"
-                            : star <= animatedAvgRating
-                            ? "text-amber-400 fill-amber-400/50"
-                            : "text-gray-300"
-                        }`}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Mobile hint */}
-                  <div className="mt-2 md:hidden">
-                    <p className="text-[10px] text-amber-600/70 dark:text-amber-400/70 font-medium">
-                      Toque para explorar →
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Buildings Covered */}
-              <Card
-                className={`group relative overflow-hidden border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-teal-50/70 to-cyan-100/50 dark:from-teal-950/20 dark:to-cyan-900/10 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-500 hover:scale-[1.02] cursor-pointer active:scale-[0.98] touch-manipulation ${
-                  statsVisible
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-8"
-                }`}
-                style={{ transitionDelay: statsVisible ? "700ms" : "0ms" }}
-              >
-                {/* Animated background gradient */}
-                <div className="absolute inset-0 bg-gradient-to-r from-teal-400/0 via-cyan-400/0 to-teal-400/0 group-hover:from-teal-400/10 group-hover:via-cyan-400/5 group-hover:to-teal-400/10 transition-all duration-700" />
-
-                {/* Mobile touch indicator */}
-                <div className="absolute top-2 right-2 md:hidden">
-                  <div className="w-6 h-6 bg-teal-500/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-teal-300/30">
-                    <div className="w-2 h-2 bg-teal-500 rounded-full animate-pulse" />
-                  </div>
-                </div>
-
-                <CardContent className="relative p-4 sm:p-5 text-center">
-                  {/* Pulsing icon */}
-                  <div className="relative mx-auto mb-3 w-12 h-12 sm:w-14 sm:h-14">
-                    <div className="absolute inset-0 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full animate-pulse opacity-20 group-hover:opacity-40 transition-opacity duration-300" />
-                    <div className="relative w-full h-full bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
-                      <Map className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-                    </div>
-                  </div>
-
-                  <p className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors duration-300">
-                    Edifícios Mapeados
-                  </p>
-
-                  {/* Animated counter */}
-                  <div className="relative">
-                    <p className="text-xl sm:text-2xl font-black text-teal-600 dark:text-teal-400 tracking-tight group-hover:scale-110 transition-transform duration-300">
-                      {animatedBuildings}
-                    </p>
-                    {/* Sparkle effect on hover */}
-                    <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <Sparkles className="h-4 w-4 text-yellow-400 animate-pulse" />
-                    </div>
-                  </div>
-
-                  {/* Building icons visualization */}
-                  <div className="mt-3 flex justify-center space-x-1">
-                    {Array.from(
-                      { length: Math.min(animatedBuildings, 5) },
-                      (_, i) => (
-                        <div
-                          key={i}
-                          className="w-2 h-2 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full animate-pulse"
-                          style={{ animationDelay: `${i * 200}ms` }}
-                        />
-                      )
-                    )}
-                    {animatedBuildings > 5 && (
-                      <span className="text-xs text-teal-600 dark:text-teal-400 font-semibold ml-1">
-                        +{animatedBuildings - 5}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Mobile hint */}
-                  <div className="mt-2 md:hidden">
-                    <p className="text-[10px] text-teal-600/70 dark:text-teal-400/70 font-medium">
-                      Toque para explorar →
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Cleanest Average */}
-              <Card
-                className={`group relative overflow-hidden border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-green-50/70 to-emerald-100/50 dark:from-green-950/20 dark:to-emerald-900/10 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-500 hover:scale-[1.02] cursor-pointer active:scale-[0.98] touch-manipulation ${
-                  statsVisible
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-8"
-                }`}
-                style={{ transitionDelay: statsVisible ? "900ms" : "0ms" }}
-              >
-                {/* Animated background gradient */}
-                <div className="absolute inset-0 bg-gradient-to-r from-green-400/0 via-emerald-400/0 to-green-400/0 group-hover:from-green-400/10 group-hover:via-emerald-400/5 group-hover:to-green-400/10 transition-all duration-700" />
-
-                {/* Mobile touch indicator */}
-                <div className="absolute top-2 right-2 md:hidden">
-                  <div className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-green-300/30">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  </div>
-                </div>
-
-                <CardContent className="relative p-4 sm:p-5 text-center">
-                  {/* Pulsing icon */}
-                  <div className="relative mx-auto mb-3 w-12 h-12 sm:w-14 sm:h-14">
-                    <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full animate-pulse opacity-20 group-hover:opacity-40 transition-opacity duration-300" />
-                    <div className="relative w-full h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
-                      <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-                    </div>
-                  </div>
-
-                  <p className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1 group-hover:text-green-700 dark:group-hover:text-green-300 transition-colors duration-300">
-                    Higiene Geral
-                  </p>
-
-                  {/* Animated text */}
-                  <div className="relative">
-                    <p
-                      className={`text-sm sm:text-base font-bold text-green-600 dark:text-green-400 group-hover:scale-105 transition-transform duration-300 ${
-                        statsVisible ? "opacity-100" : "opacity-0"
-                      }`}
-                      style={{
-                        transitionDelay: statsVisible ? "1200ms" : "0ms",
-                      }}
-                    >
-                      {(() => {
-                        const cleanlinessCounts = bathroomData.reduce(
-                          (acc, b) => {
-                            acc[b.cleanliness] = (acc[b.cleanliness] || 0) + 1;
-                            return acc;
-                          },
-                          {} as Record<string, number>
-                        );
-                        const mostCommon = Object.entries(
-                          cleanlinessCounts
-                        ).sort(([, a], [, b]) => b - a)[0];
-                        return mostCommon ? mostCommon[0] : "N/A";
-                      })()}
-                    </p>
-                    {/* Sparkle effect on hover */}
-                    <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <Sparkles className="h-4 w-4 text-yellow-400 animate-pulse" />
-                    </div>
-                  </div>
-
-                  {/* Cleanliness indicator */}
-                  <div
-                    className={`mt-3 transition-all duration-700 ${
+              {!statsLoaded ? (
+                <>
+                  <StatsCardSkeleton />
+                  <StatsCardSkeleton />
+                  <StatsCardSkeleton />
+                  <StatsCardSkeleton />
+                </>
+              ) : (
+                <>
+                  {/* Total Reviews */}
+                  <Card
+                    className={`group relative overflow-hidden border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-purple-50/70 to-pink-100/50 dark:from-purple-950/20 dark:to-pink-900/10 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-500 hover:scale-[1.02] cursor-pointer active:scale-[0.98] touch-manipulation ${
                       statsVisible
-                        ? "opacity-100 scale-100"
-                        : "opacity-0 scale-95"
+                        ? "opacity-100 translate-y-0"
+                        : "opacity-0 translate-y-8"
                     }`}
-                    style={{ transitionDelay: statsVisible ? "1400ms" : "0ms" }}
+                    style={{ transitionDelay: statsVisible ? "300ms" : "0ms" }}
                   >
-                    <div className="flex justify-center">
-                      <div className="px-3 py-1 bg-green-100 dark:bg-green-900/30 rounded-full border border-green-200 dark:border-green-800">
-                        <span className="text-xs font-semibold text-green-700 dark:text-green-300">
-                          🧼 Excelente
-                        </span>
+                    {/* Animated background gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-400/0 via-pink-400/0 to-purple-400/0 group-hover:from-purple-400/10 group-hover:via-pink-400/5 group-hover:to-purple-400/10 transition-all duration-700" />
+
+                    {/* Mobile touch indicator */}
+                    <div className="absolute top-2 right-2 md:hidden">
+                      <div className="w-6 h-6 bg-purple-500/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-purple-300/30">
+                        <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
                       </div>
                     </div>
-                  </div>
 
-                  {/* Mobile hint */}
-                  <div className="mt-2 md:hidden">
-                    <p className="text-[10px] text-green-600/70 dark:text-green-400/70 font-medium">
-                      Toque para explorar →
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+                    <CardContent className="relative p-4 sm:p-5 text-center">
+                      {/* Pulsing icon */}
+                      <div className="relative mx-auto mb-3 w-12 h-12 sm:w-14 sm:h-14">
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-pulse opacity-20 group-hover:opacity-40 transition-opacity duration-300" />
+                        <div className="relative w-full h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                          <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                        </div>
+                      </div>
+
+                      <p className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1 group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors duration-300">
+                        Total de Reviews
+                      </p>
+
+                      {/* Animated counter */}
+                      <div className="relative">
+                        <p className="text-xl sm:text-2xl font-black text-purple-600 dark:text-purple-400 tracking-tight group-hover:scale-110 transition-transform duration-300">
+                          {animatedTotalReviews.toLocaleString()}
+                        </p>
+                        {/* Sparkle effect on hover */}
+                        <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <Sparkles className="h-4 w-4 text-yellow-400 animate-pulse" />
+                        </div>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="mt-3 w-full bg-purple-100 dark:bg-purple-900/30 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-1000 ease-out"
+                          style={{
+                            width: statsVisible
+                              ? `${Math.min(
+                                  (animatedTotalReviews / totalReviews) * 100,
+                                  100
+                                )}%`
+                              : "0%",
+                          }}
+                        />
+                      </div>
+
+                      {/* Mobile hint */}
+                      <div className="mt-2 md:hidden">
+                        <p className="text-[10px] text-purple-600/70 dark:text-purple-400/70 font-medium">
+                          Toque para explorar →
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Average Rating */}
+                  <Card
+                    className={`group relative overflow-hidden border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-amber-50/70 to-yellow-100/50 dark:from-amber-950/20 dark:to-yellow-900/10 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-500 hover:scale-[1.02] cursor-pointer active:scale-[0.98] touch-manipulation ${
+                      statsVisible
+                        ? "opacity-100 translate-y-0"
+                        : "opacity-0 translate-y-8"
+                    }`}
+                    style={{ transitionDelay: statsVisible ? "500ms" : "0ms" }}
+                  >
+                    {/* Animated background gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-amber-400/0 via-yellow-400/0 to-amber-400/0 group-hover:from-amber-400/10 group-hover:via-yellow-400/5 group-hover:to-amber-400/10 transition-all duration-700" />
+
+                    {/* Mobile touch indicator */}
+                    <div className="absolute top-2 right-2 md:hidden">
+                      <div className="w-6 h-6 bg-amber-500/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-amber-300/30">
+                        <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+                      </div>
+                    </div>
+
+                    <CardContent className="relative p-4 sm:p-5 text-center">
+                      {/* Pulsing icon */}
+                      <div className="relative mx-auto mb-3 w-12 h-12 sm:w-14 sm:h-14">
+                        <div className="absolute inset-0 bg-gradient-to-r from-amber-500 to-yellow-500 rounded-full animate-pulse opacity-20 group-hover:opacity-40 transition-opacity duration-300" />
+                        <div className="relative w-full h-full bg-gradient-to-r from-amber-500 to-yellow-500 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                          <Star className="h-5 w-5 sm:h-6 sm:w-6 text-white fill-white" />
+                        </div>
+                      </div>
+
+                      <p className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1 group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors duration-300">
+                        Avaliação Média
+                      </p>
+
+                      {/* Animated counter */}
+                      <div className="relative">
+                        <p className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 tracking-tight group-hover:scale-110 transition-transform duration-300">
+                          {animatedAvgRating.toFixed(1)}
+                          <span className="text-lg sm:text-xl ml-1">★</span>
+                        </p>
+                        {/* Sparkle effect on hover */}
+                        <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <Sparkles className="h-4 w-4 text-yellow-400 animate-pulse" />
+                        </div>
+                      </div>
+
+                      {/* Rating visualization */}
+                      <div className="mt-3 flex justify-center space-x-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            className={`h-3 w-3 transition-all duration-500 ${
+                              star <= Math.floor(animatedAvgRating)
+                                ? "text-amber-400 fill-amber-400"
+                                : star <= animatedAvgRating
+                                ? "text-amber-400 fill-amber-400/50"
+                                : "text-gray-300"
+                            }`}
+                          />
+                        ))}
+                      </div>
+
+                      {/* Mobile hint */}
+                      <div className="mt-2 md:hidden">
+                        <p className="text-[10px] text-amber-600/70 dark:text-amber-400/70 font-medium">
+                          Toque para explorar →
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Buildings Covered */}
+                  <Card
+                    className={`group relative overflow-hidden border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-teal-50/70 to-cyan-100/50 dark:from-teal-950/20 dark:to-cyan-900/10 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-500 hover:scale-[1.02] cursor-pointer active:scale-[0.98] touch-manipulation ${
+                      statsVisible
+                        ? "opacity-100 translate-y-0"
+                        : "opacity-0 translate-y-8"
+                    }`}
+                    style={{ transitionDelay: statsVisible ? "700ms" : "0ms" }}
+                  >
+                    {/* Animated background gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-teal-400/0 via-cyan-400/0 to-teal-400/0 group-hover:from-teal-400/10 group-hover:via-cyan-400/5 group-hover:to-teal-400/10 transition-all duration-700" />
+
+                    {/* Mobile touch indicator */}
+                    <div className="absolute top-2 right-2 md:hidden">
+                      <div className="w-6 h-6 bg-teal-500/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-teal-300/30">
+                        <div className="w-2 h-2 bg-teal-500 rounded-full animate-pulse" />
+                      </div>
+                    </div>
+
+                    <CardContent className="relative p-4 sm:p-5 text-center">
+                      {/* Pulsing icon */}
+                      <div className="relative mx-auto mb-3 w-12 h-12 sm:w-14 sm:h-14">
+                        <div className="absolute inset-0 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full animate-pulse opacity-20 group-hover:opacity-40 transition-opacity duration-300" />
+                        <div className="relative w-full h-full bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                          <Map className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                        </div>
+                      </div>
+
+                      <p className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors duration-300">
+                        Edifícios Mapeados
+                      </p>
+
+                      {/* Animated counter */}
+                      <div className="relative">
+                        <p className="text-xl sm:text-2xl font-black text-teal-600 dark:text-teal-400 tracking-tight group-hover:scale-110 transition-transform duration-300">
+                          {animatedBuildings}
+                        </p>
+                        {/* Sparkle effect on hover */}
+                        <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <Sparkles className="h-4 w-4 text-yellow-400 animate-pulse" />
+                        </div>
+                      </div>
+
+                      {/* Building icons visualization */}
+                      <div className="mt-3 flex justify-center space-x-1">
+                        {Array.from(
+                          { length: Math.min(animatedBuildings, 5) },
+                          (_, i) => (
+                            <div
+                              key={i}
+                              className="w-2 h-2 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full animate-pulse"
+                              style={{ animationDelay: `${i * 200}ms` }}
+                            />
+                          )
+                        )}
+                        {animatedBuildings > 5 && (
+                          <span className="text-xs text-teal-600 dark:text-teal-400 font-semibold ml-1">
+                            +{animatedBuildings - 5}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Mobile hint */}
+                      <div className="mt-2 md:hidden">
+                        <p className="text-[10px] text-teal-600/70 dark:text-teal-400/70 font-medium">
+                          Toque para explorar →
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Cleanest Average */}
+                  <Card
+                    className={`group relative overflow-hidden border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-green-50/70 to-emerald-100/50 dark:from-green-950/20 dark:to-emerald-900/10 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-500 hover:scale-[1.02] cursor-pointer active:scale-[0.98] touch-manipulation ${
+                      statsVisible
+                        ? "opacity-100 translate-y-0"
+                        : "opacity-0 translate-y-8"
+                    }`}
+                    style={{ transitionDelay: statsVisible ? "900ms" : "0ms" }}
+                  >
+                    {/* Animated background gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-green-400/0 via-emerald-400/0 to-green-400/0 group-hover:from-green-400/10 group-hover:via-emerald-400/5 group-hover:to-green-400/10 transition-all duration-700" />
+
+                    {/* Mobile touch indicator */}
+                    <div className="absolute top-2 right-2 md:hidden">
+                      <div className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-green-300/30">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                      </div>
+                    </div>
+
+                    <CardContent className="relative p-4 sm:p-5 text-center">
+                      {/* Pulsing icon */}
+                      <div className="relative mx-auto mb-3 w-12 h-12 sm:w-14 sm:h-14">
+                        <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full animate-pulse opacity-20 group-hover:opacity-40 transition-opacity duration-300" />
+                        <div className="relative w-full h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                          <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                        </div>
+                      </div>
+
+                      <p className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1 group-hover:text-green-700 dark:group-hover:text-green-300 transition-colors duration-300">
+                        Higiene Geral
+                      </p>
+
+                      {/* Animated text */}
+                      <div className="relative">
+                        <p
+                          className={`text-sm sm:text-base font-bold text-green-600 dark:text-green-400 group-hover:scale-105 transition-transform duration-300 ${
+                            statsVisible ? "opacity-100" : "opacity-0"
+                          }`}
+                          style={{
+                            transitionDelay: statsVisible ? "1200ms" : "0ms",
+                          }}
+                        >
+                          {(() => {
+                            const cleanlinessCounts = bathroomData.reduce(
+                              (acc, b) => {
+                                acc[b.cleanliness] =
+                                  (acc[b.cleanliness] || 0) + 1;
+                                return acc;
+                              },
+                              {} as Record<string, number>
+                            );
+                            const mostCommon = Object.entries(
+                              cleanlinessCounts
+                            ).sort(([, a], [, b]) => b - a)[0];
+                            return mostCommon ? mostCommon[0] : "N/A";
+                          })()}
+                        </p>
+                        {/* Sparkle effect on hover */}
+                        <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <Sparkles className="h-4 w-4 text-yellow-400 animate-pulse" />
+                        </div>
+                      </div>
+
+                      {/* Cleanliness indicator */}
+                      <div
+                        className={`mt-3 transition-all duration-700 ${
+                          statsVisible
+                            ? "opacity-100 scale-100"
+                            : "opacity-0 scale-95"
+                        }`}
+                        style={{
+                          transitionDelay: statsVisible ? "1400ms" : "0ms",
+                        }}
+                      >
+                        <div className="flex justify-center">
+                          <div className="px-3 py-1 bg-green-100 dark:bg-green-900/30 rounded-full border border-green-200 dark:border-green-800">
+                            <span className="text-xs font-semibold text-green-700 dark:text-green-300">
+                              🧼 Excelente
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Mobile hint */}
+                      <div className="mt-2 md:hidden">
+                        <p className="text-[10px] text-green-600/70 dark:text-green-400/70 font-medium">
+                          Toque para explorar →
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
             </div>
 
             {/* Fun fact reveal */}
