@@ -16,7 +16,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { bathrooms, Bathroom } from "@/data/bathrooms";
+import { Bathroom } from "@/types";
 import { BathroomFilters } from "@/components/bathroom-filters";
 import { MapClickHandler, EditModeControls } from "@/components/map-editor";
 import "leaflet/dist/leaflet.css";
@@ -161,12 +161,12 @@ export function LeafletMap({
   const [isLocating, setIsLocating] = useState(false);
   const [selectedBathroom, setSelectedBathroom] = useState<string | null>(null);
   const [resetToCenter, setResetToCenter] = useState(false);
-  const [internalFilteredBathrooms, setInternalFilteredBathrooms] =
-    useState<Bathroom[]>(bathrooms);
+  const [internalFilteredBathrooms, setInternalFilteredBathrooms] = useState<
+    Bathroom[]
+  >([]);
   const [showFilters, setShowFilters] = useState(true); // Start with filters open by default
   const [isEditMode, setIsEditMode] = useState(false);
-  const [editableBathrooms, setEditableBathrooms] =
-    useState<Bathroom[]>(bathrooms);
+  const [editableBathrooms, setEditableBathrooms] = useState<Bathroom[]>([]);
   const [selectedEditBathroom, setSelectedEditBathroom] = useState<string>("");
   // Show a short hint telling users to tap a marker (persist once per device)
   const [showTouchHint, setShowTouchHint] = useState(false);
@@ -794,7 +794,7 @@ ${editableBathrooms
                       ))}
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      ({bathroom.reviewCount})
+                      ({bathroom.review_count})
                     </span>
                   </div>
 
@@ -812,14 +812,14 @@ ${editableBathrooms
                     <div className="flex items-center gap-3 text-xs">
                       <span
                         className={`font-medium ${
-                          bathroom.paperSupply === "Bom"
+                          bathroom.paper_supply === "Bom"
                             ? "text-green-600"
-                            : bathroom.paperSupply === "Médio"
+                            : bathroom.paper_supply === "Médio"
                             ? "text-yellow-600"
                             : "text-red-600"
                         }`}
                       >
-                        Papel: {bathroom.paperSupply}
+                        Papel: {bathroom.paper_supply}
                       </span>
                       <span className="text-muted-foreground">
                         Privacidade: {bathroom.privacy}

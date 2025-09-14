@@ -15,14 +15,14 @@ interface BathroomCardProps {
   building: string;
   distance?: number; // optional: only show when near IST
   rating: number;
-  reviewCount: number;
+  review_count: number;
   cleanliness: string;
   accessibility?: boolean;
-  paperSupply?: string;
+  paper_supply?: string;
   isClosest?: boolean;
   onViewDetails?: () => void;
   floor?: string;
-  lastCleaned?: string;
+  last_cleaned?: string;
 }
 
 export function BathroomCard({
@@ -30,14 +30,14 @@ export function BathroomCard({
   building,
   distance,
   rating,
-  reviewCount,
+  review_count,
   cleanliness,
   accessibility,
-  paperSupply,
+  paper_supply,
   isClosest = false,
   onViewDetails,
   floor,
-  lastCleaned,
+  last_cleaned,
 }: BathroomCardProps) {
   return (
     <Card
@@ -89,10 +89,10 @@ export function BathroomCard({
             <p className="text-sm text-muted-foreground mb-2">
               {building} {floor && `• ${floor}`}
             </p>
-            {lastCleaned && (
+            {last_cleaned && (
               <div className="flex items-center gap-1 text-xs text-green-600 mb-2">
                 <Clock className="h-3 w-3" />
-                Última limpeza: {lastCleaned}
+                Última limpeza: {last_cleaned}
               </div>
             )}
           </div>
@@ -140,7 +140,9 @@ export function BathroomCard({
           <span className="text-sm font-semibold text-foreground">
             {rating}
           </span>
-          <span className="text-sm text-muted-foreground">({reviewCount})</span>
+          <span className="text-sm text-muted-foreground">
+            ({review_count})
+          </span>
         </div>
 
         {/* Quality Metrics */}
@@ -161,21 +163,21 @@ export function BathroomCard({
               {cleanliness}
             </div>
           </div>
-          {paperSupply && (
+          {paper_supply && (
             <div className="text-center p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
               <div className="text-xs font-medium text-muted-foreground mb-1">
                 Papel
               </div>
               <div
                 className={`text-sm font-bold ${
-                  paperSupply === "Bom"
+                  paper_supply === "Bom"
                     ? "text-green-600"
-                    : paperSupply === "Médio"
+                    : paper_supply === "Médio"
                     ? "text-yellow-600"
                     : "text-red-600"
                 }`}
               >
-                {paperSupply}
+                {paper_supply}
               </div>
             </div>
           )}

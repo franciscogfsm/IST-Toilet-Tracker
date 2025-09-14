@@ -31,7 +31,8 @@ import { ReviewForm } from "@/components/review-form";
 import { QuickStats } from "@/components/quick-stats";
 import { BathroomDetails } from "@/components/bathroom-details";
 import { SidebarMenu } from "@/components/sidebar-menu";
-import { bathrooms, Bathroom, Review } from "@/data/bathrooms";
+import { useBathrooms } from "@/hooks/useBathrooms";
+import { Bathroom, Review } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Suspense, lazy } from "react";
 
@@ -121,14 +122,7 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 
-  // Debounce search query to improve performance
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 300); // 300ms debounce delay
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+  // Initialize filters from hook
   const [selectedBathroom, setSelectedBathroom] = useState<Bathroom | null>(
     null
   );
@@ -137,7 +131,18 @@ const Index = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedBathroomDetails, setSelectedBathroomDetails] =
     useState<Bathroom | null>(null);
-  const [bathroomData, setBathroomData] = useState<Bathroom[]>(bathrooms);
+  const {
+    bathrooms: bathroomData,
+    mapBathrooms: mapBathrooms,
+    filters,
+    updateFilters,
+    addReview,
+    getBuildings,
+    getFloors,
+    statistics,
+    loading: bathroomsLoading,
+    error: bathroomsError,
+  } = useBathrooms();
   const [pendingReviewBathroomId, setPendingReviewBathroomId] =
     useState<string>("");
   const [selectedBuilding, setSelectedBuilding] = useState<string>("");
@@ -302,28 +307,9 @@ const Index = () => {
   // Respect user setting to hide distance when off campus
   const showOffCampusDistance = settings.showDistanceOffCampus;
 
-  // Memoized calculations for performance optimization
-  const buildings = useMemo(
-    () =>
-      Array.from(new Set(bathroomData.map((b) => b.building))).sort((a, b) =>
-        a.localeCompare(b)
-      ),
-    [bathroomData]
-  );
-
-  const floorsForBuilding = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          bathroomData
-            .filter((b) =>
-              selectedBuilding ? b.building === selectedBuilding : true
-            )
-            .map((b) => b.floor)
-        )
-      ).sort((a, b) => a.localeCompare(b)),
-    [bathroomData, selectedBuilding]
-  );
+  // Get buildings and floors from hook
+  const buildings = getBuildings();
+  const floorsForBuilding = getFloors();
 
   const bathroomsForPicker = useMemo(
     () =>
@@ -338,36 +324,7 @@ const Index = () => {
   );
 
   // Filter bathrooms based on search (name, building, or floor)
-  const filteredBathrooms = useMemo(
-    () =>
-      bathroomData.filter(
-        (bathroom) =>
-          bathroom.name
-            .toLowerCase()
-            .includes(debouncedSearchQuery.toLowerCase()) ||
-          bathroom.building
-            .toLowerCase()
-            .includes(debouncedSearchQuery.toLowerCase()) ||
-          bathroom.floor
-            .toLowerCase()
-            .includes(debouncedSearchQuery.toLowerCase())
-      ),
-    [bathroomData, debouncedSearchQuery]
-  );
-
-  // For the map: same filtering as list for consistency
-  const mapFilteredByName = useMemo(
-    () =>
-      bathroomData.filter(
-        (b) =>
-          b.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-          b.building
-            .toLowerCase()
-            .includes(debouncedSearchQuery.toLowerCase()) ||
-          b.floor.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
-      ),
-    [bathroomData, debouncedSearchQuery]
-  );
+  const filteredBathrooms = bathroomData;
 
   // Sort by distance: dynamic (if near IST) else fallback on static field
   const withDynamicDistance = useCallback(
@@ -406,7 +363,7 @@ const Index = () => {
           if (b.rating !== a.rating) {
             return b.rating - a.rating;
           }
-          return b.reviewCount - a.reviewCount;
+          return b.review_count - a.review_count;
         })
         .slice(0, 5),
     [bathroomData]
@@ -417,22 +374,10 @@ const Index = () => {
     [topBathroomsBase, withDynamicDistance]
   );
 
-  // Memoized stats calculations
-  const totalReviews = useMemo(
-    () => bathroomData.reduce((sum, b) => sum + b.reviewCount, 0),
-    [bathroomData]
-  );
-
-  const avgRating = useMemo(
-    () =>
-      bathroomData.reduce((sum, b) => sum + b.rating, 0) / bathroomData.length,
-    [bathroomData]
-  );
-
-  const buildingsCount = useMemo(
-    () => new Set(bathroomData.map((b) => b.building)).size,
-    [bathroomData]
-  );
+  // Use real statistics from database
+  const totalReviews = statistics?.totalReviews || 0;
+  const avgRating = statistics?.avgRating || 0;
+  const buildingsCount = statistics?.buildingsCount || 0;
 
   // Scroll-in animation for Top 5
   const [visibleTopIndices, setVisibleTopIndices] = useState<Set<number>>(
@@ -564,6 +509,15 @@ const Index = () => {
     return () => observer.disconnect();
   }, [statsVisible]);
 
+  // Initialize filters from hook - moved after state declarations
+  useEffect(() => {
+    updateFilters({
+      query: searchQuery,
+      building: selectedBuilding,
+      floor: selectedFloor,
+    });
+  }, [searchQuery, selectedBuilding, selectedFloor, updateFilters]);
+
   const handleReviewBathroom = (bathroomName: string) => {
     setReviewBathroom(bathroomName);
     setShowReviewForm(true);
@@ -573,7 +527,7 @@ const Index = () => {
     setSelectedBathroomDetails(bathroom);
   };
 
-  const handleReviewSubmit = (
+  const handleReviewSubmit = async (
     bathroomId: string,
     reviewData: {
       rating: number;
@@ -585,67 +539,12 @@ const Index = () => {
       paperAvailable?: boolean;
     }
   ) => {
-    const newReview: Review = {
-      ...reviewData,
-      id: `review_${Date.now()}`,
-      date: new Date().toISOString().split("T")[0],
-      cleanliness: reviewData.cleanliness ?? reviewData.rating,
-      paperSupply: reviewData.paperSupply ?? reviewData.rating,
-      privacy: reviewData.privacy ?? reviewData.rating,
-    };
-
-    // Update bathroom data with new review
-    setBathroomData((prevData) =>
-      prevData.map((bathroom) => {
-        if (bathroom.id === bathroomId) {
-          const updatedReviews = [...bathroom.reviews, newReview];
-          const totalRating = updatedReviews.reduce(
-            (sum, r) => sum + r.rating,
-            0
-          );
-          const avgRating = totalRating / updatedReviews.length;
-
-          // Aggregate cleanliness, paperSupply, privacy textual summary
-          const avgClean =
-            updatedReviews.reduce((s, r) => s + (r.cleanliness || 0), 0) /
-            updatedReviews.length;
-          const avgPaper =
-            updatedReviews.reduce((s, r) => s + (r.paperSupply || 0), 0) /
-            updatedReviews.length;
-          const avgPrivacy =
-            updatedReviews.reduce((s, r) => s + (r.privacy || 0), 0) /
-            updatedReviews.length;
-
-          const cleanlinessLabel =
-            avgClean >= 4.5
-              ? "Sempre limpo"
-              : avgClean >= 3.5
-              ? "Geralmente limpo"
-              : "Às vezes limpo";
-
-          const paperLabel =
-            avgPaper >= 4.5 ? "Bom" : avgPaper >= 3.0 ? "Médio" : "Fraco";
-
-          const privacyLabel =
-            avgPrivacy >= 4.5
-              ? "Excelente"
-              : avgPrivacy >= 3.5
-              ? "Boa"
-              : "Média";
-
-          return {
-            ...bathroom,
-            reviews: updatedReviews,
-            reviewCount: updatedReviews.length,
-            rating: Math.round(avgRating * 10) / 10, // Round to 1 decimal
-            cleanliness: cleanlinessLabel,
-            paperSupply: paperLabel as any,
-            privacy: privacyLabel as any,
-          };
-        }
-        return bathroom;
-      })
-    );
+    try {
+      await addReview(bathroomId, reviewData);
+    } catch (error) {
+      console.error("Error submitting review:", error);
+      // TODO: Show error message to user
+    }
   };
 
   const handleBathroomSelect = (bathroom: Bathroom | null) => {
@@ -891,7 +790,7 @@ const Index = () => {
           >
             <LazyMapWithFilters
               onBathroomSelect={handleBathroomSelect}
-              bathroomData={mapFilteredByName}
+              bathroomData={mapBathrooms}
               defaultFloor={settings.defaultFloor}
               isModalOpen={!!selectedBathroomDetails}
             />
@@ -1660,20 +1559,7 @@ const Index = () => {
                             transitionDelay: statsVisible ? "1200ms" : "0ms",
                           }}
                         >
-                          {(() => {
-                            const cleanlinessCounts = bathroomData.reduce(
-                              (acc, b) => {
-                                acc[b.cleanliness] =
-                                  (acc[b.cleanliness] || 0) + 1;
-                                return acc;
-                              },
-                              {} as Record<string, number>
-                            );
-                            const mostCommon = Object.entries(
-                              cleanlinessCounts
-                            ).sort(([, a], [, b]) => b - a)[0];
-                            return mostCommon ? mostCommon[0] : "N/A";
-                          })()}
+                          {statistics?.mostCommonCleanliness || "N/A"}
                         </p>
                         {/* Sparkle effect on hover */}
                         <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">

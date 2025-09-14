@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { LeafletMap } from "./leaflet-map";
-import { Bathroom, bathrooms } from "@/data/bathrooms";
+import { Bathroom } from "@/types";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface MapWithFiltersProps {

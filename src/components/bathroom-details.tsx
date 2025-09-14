@@ -31,35 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Toggle } from "@/components/ui/toggle";
-
-interface Bathroom {
-  id: string;
-  name: string;
-  building: string;
-  distance: number;
-  rating: number;
-  reviewCount: number;
-  cleanliness: string;
-  x: number;
-  y: number;
-  floor: string;
-  facilities: string[];
-  accessibility: boolean;
-  paperSupply: "Bom" | "Médio" | "Fraco";
-  privacy: "Excelente" | "Boa" | "Média";
-  lastCleaned: string;
-  reviews: Array<{
-    id: string;
-    user: string;
-    rating: number;
-    comment: string;
-    date: string;
-    cleanliness: number;
-    paperSupply: number;
-    privacy: number;
-  }>;
-  hasAccessible?: boolean;
-}
+import { Bathroom, Review } from "@/types";
 
 interface BathroomDetailsProps {
   bathroom: Bathroom | null;
@@ -399,7 +371,7 @@ export function BathroomDetails({
                     variant="secondary"
                     className="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
                   >
-                    {bathroom.reviewCount} avaliações
+                    {bathroom.review_count} avaliações
                   </Badge>
                 </div>
 
@@ -464,14 +436,14 @@ export function BathroomDetails({
                 </div>
                 <div
                   className={`text-base font-bold px-2 py-1 rounded-md ${
-                    bathroom.paperSupply === "Bom"
+                    bathroom.paper_supply === "Bom"
                       ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200"
-                      : bathroom.paperSupply === "Médio"
+                      : bathroom.paper_supply === "Médio"
                       ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200"
                       : "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200"
                   }`}
                 >
-                  {bathroom.paperSupply}
+                  {bathroom.paper_supply}
                 </div>
               </div>
               <div className="text-center space-y-1">
@@ -529,7 +501,7 @@ export function BathroomDetails({
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
                               <p className="font-medium text-sm text-gray-900 dark:text-white truncate">
-                                {review.user}
+                                {review.user_name}
                               </p>
                               <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 flex-shrink-0">
                                 {review.date}
@@ -716,7 +688,7 @@ export function BathroomDetails({
         <div className="sticky bottom-0 z-10 bg-gradient-to-r from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 supports-[backdrop-filter]:backdrop-blur-lg border-t border-border/60 px-4 py-4 sm:px-6 shadow-lg">
           <div className="flex items-center justify-between">
             <div className="text-xs text-gray-500 dark:text-gray-400">
-              Última limpeza: {bathroom.lastCleaned}
+              Última limpeza: {bathroom.last_cleaned}
             </div>
             <Button
               variant="outline"

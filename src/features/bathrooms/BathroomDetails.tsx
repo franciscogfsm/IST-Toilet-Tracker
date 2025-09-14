@@ -57,7 +57,7 @@ export function BathroomDetails({
                 <span className="font-bold text-lg">{bathroom.rating}</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                {bathroom.reviewCount} reviews
+                {bathroom.review_count} reviews
               </p>
             </div>
 
@@ -73,7 +73,7 @@ export function BathroomDetails({
               <div className="flex items-center justify-center gap-1 mb-1">
                 <Clock className="h-4 w-4 text-green-500" />
                 <span className="font-bold text-sm">
-                  {bathroom.lastCleaned}
+                  {bathroom.last_cleaned}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">Última limpeza</p>
@@ -115,7 +115,7 @@ export function BathroomDetails({
                 <div>
                   <p className="font-medium">Papel</p>
                   <p className="text-sm text-muted-foreground">
-                    {bathroom.paperSupply}
+                    {bathroom.paper_supply}
                   </p>
                 </div>
               </div>
@@ -158,7 +158,7 @@ export function BathroomDetails({
                 {bathroom.reviews.slice(0, 3).map((review) => (
                   <div key={review.id} className="border rounded-lg p-3">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium">{review.user}</span>
+                      <span className="font-medium">{review.user_name}</span>
                       <div className="flex items-center gap-1">
                         <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                         <span className="text-sm">{review.rating}</span>

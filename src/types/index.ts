@@ -1,13 +1,16 @@
 export interface Review {
   id: string;
-  user: string;
+  bathroom_id?: string; // For database operations
+  user_name: string; // Changed from 'user' to match database
   rating: number;
   comment: string;
   date: string;
   cleanliness: number;
-  paperSupply: number;
+  paper_supply: number; // Changed from paperSupply to match database
   privacy: number;
   paperAvailable?: boolean;
+  created_at?: string; // Database timestamp
+  updated_at?: string; // Database timestamp
 }
 
 export interface Bathroom {
@@ -16,19 +19,21 @@ export interface Bathroom {
   building: string;
   distance: number;
   rating: number;
-  reviewCount: number;
+  review_count: number; // Changed from reviewCount to match database
   cleanliness: string;
   x: number; // Position on map (percentage)
   y: number; // Position on map (percentage)
   floor: string;
   facilities: string[];
   accessibility: boolean;
-  paperSupply: "Bom" | "Médio" | "Fraco";
+  paper_supply: "Bom" | "Médio" | "Fraco"; // Changed from paperSupply to match database
   privacy: "Excelente" | "Boa" | "Média";
-  lastCleaned: string;
-  reviews: Review[];
-  hasAccessible?: boolean; // For locations that also have accessible facilities
+  last_cleaned: string; // Changed from lastCleaned to match database
+  reviews?: Review[]; // Optional, loaded separately
+  has_accessible?: boolean; // Changed from hasAccessible to match database
   dynamicDistance?: number; // Calculated distance when user location is available
+  created_at?: string; // Database timestamp
+  updated_at?: string; // Database timestamp
 }
 
 export interface LocationState {

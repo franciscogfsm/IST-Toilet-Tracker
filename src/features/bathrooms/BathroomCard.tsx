@@ -50,7 +50,7 @@ export function BathroomCard({
             <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
             <span className="font-medium">{bathroom.rating}</span>
             <span className="text-sm text-gray-500">
-              ({bathroom.reviewCount} reviews)
+              ({bathroom.review_count} reviews)
             </span>
           </div>
           <div className="flex items-center gap-1 text-sm text-gray-600">
@@ -61,14 +61,14 @@ export function BathroomCard({
 
         <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
           <span>{bathroom.cleanliness}</span>
-          <span>{bathroom.paperSupply}</span>
+          <span>{bathroom.paper_supply}</span>
           <span>{bathroom.privacy}</span>
         </div>
 
         {!compact && (
           <div className="flex items-center gap-2 text-xs text-gray-500">
             <Clock className="h-3 w-3" />
-            <span>Última limpeza: {bathroom.lastCleaned}</span>
+            <span>Última limpeza: {bathroom.last_cleaned}</span>
           </div>
         )}
 

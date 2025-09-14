@@ -85,7 +85,7 @@ export function Index() {
     .sort((a, b) =>
       b.rating !== a.rating
         ? b.rating - a.rating
-        : b.reviewCount - a.reviewCount
+        : b.review_count - a.review_count
     )
     .slice(0, 5);
 
