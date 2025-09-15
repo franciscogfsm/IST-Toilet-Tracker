@@ -149,6 +149,8 @@ const Index = () => {
   const [selectedFloor, setSelectedFloor] = useState<string>("");
   const aboutRef = useRef<HTMLDivElement | null>(null);
   const [aboutVisible, setAboutVisible] = useState(false);
+  const reviewsRef = useRef<HTMLDivElement | null>(null);
+  const [reviewsVisible, setReviewsVisible] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const settings = {
     showDistanceOffCampus: false,
@@ -274,6 +276,22 @@ const Index = () => {
       (entries) => {
         entries.forEach((e) => {
           if (e.isIntersecting) setAboutVisible(true);
+        });
+      },
+      { threshold: 0.2 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  // Reveal animations for the Reviews section
+  useEffect(() => {
+    if (!reviewsRef.current) return;
+    const el = reviewsRef.current;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) setReviewsVisible(true);
         });
       },
       { threshold: 0.2 }
@@ -942,7 +960,12 @@ const Index = () => {
         {/* Enhanced Review Button */}
         <Card
           id="reviews"
-          className="border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-blue-50/80 to-cyan-100/60 dark:from-blue-950/20 dark:to-cyan-900/10 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] scroll-mt-24"
+          ref={reviewsRef}
+          className={`border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-blue-50/80 to-cyan-100/60 dark:from-blue-950/20 dark:to-cyan-900/10 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] scroll-mt-24 ${
+            reviewsVisible
+              ? "animate-in fade-in slide-in-from-bottom-4 duration-700"
+              : "opacity-0 translate-y-4"
+          }`}
         >
           <CardContent className="p-4 sm:p-6 text-center">
             <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl">
