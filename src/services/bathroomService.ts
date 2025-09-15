@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/types/database";
+import { DeviceFingerprint } from "@/lib/deviceFingerprint";
 
 type Bathroom = Database["public"]["Tables"]["bathrooms"]["Row"];
 type BathroomInsert = Database["public"]["Tables"]["bathrooms"]["Insert"];
@@ -399,6 +400,11 @@ export class BathroomService {
     bathroomId: string,
     review: Omit<ReviewInsert, "bathroom_id">
   ): Promise<void> {
+    // Check if this device has already reviewed this bathroom
+    if (DeviceFingerprint.hasReviewedBathroom(bathroomId)) {
+      throw new Error("ALREADY_REVIEWED");
+    }
+
     const reviewData: ReviewInsert = {
       ...review,
       bathroom_id: bathroomId,
@@ -411,6 +417,9 @@ export class BathroomService {
       console.error("Error adding review:", error);
       throw error;
     }
+
+    // Mark this device as having reviewed this bathroom
+    DeviceFingerprint.markReviewedBathroom(bathroomId);
 
     // Não precisamos mais atualizar estatísticas estáticas - elas são calculadas dinamicamente
   }

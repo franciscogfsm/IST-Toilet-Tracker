@@ -35,6 +35,7 @@ import { useBathrooms } from "@/hooks/useBathrooms";
 import { Bathroom, Review } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Suspense, lazy } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 // Lazy-load heavy components for better performance
 const LazyMapWithFilters = lazy(() =>
@@ -545,6 +546,8 @@ const Index = () => {
     setSelectedBathroomDetails(bathroom);
   };
 
+  const { toast } = useToast();
+
   const handleReviewSubmit = async (
     bathroomId: string,
     reviewData: {
@@ -559,9 +562,23 @@ const Index = () => {
   ) => {
     try {
       await addReview(bathroomId, reviewData);
+      // Success is handled by the bathroom-details modal
     } catch (error) {
       console.error("Error submitting review:", error);
-      // TODO: Show error message to user
+      if (error instanceof Error && error.message === "ALREADY_REVIEWED") {
+        toast({
+          title: "Review já submetida",
+          description:
+            "Já submeteste uma avaliação para esta casa de banho. Só é permitida uma avaliação por dispositivo.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro ao submeter review",
+          description: "Ocorreu um erro inesperado. Tenta novamente.",
+          variant: "destructive",
+        });
+      }
     }
   };
 

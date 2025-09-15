@@ -94,6 +94,8 @@ export function BathroomDetails({
     submissionInProgressRef.current = true;
     setIsSubmittingReview(true);
 
+    let success = false;
+
     try {
       // Calculate overall rating from cleanliness and privacy
       const finalRating = Math.round((cleanlinessRating + privacyRating) / 2);
@@ -107,6 +109,8 @@ export function BathroomDetails({
         privacy: privacyRating,
         paper_available: paperAvailable,
       });
+
+      success = true;
 
       // Reset form
       setReviewComment("");
@@ -126,9 +130,17 @@ export function BathroomDetails({
           onClose();
         }, 200); // Faster transition
       }, 2000);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao enviar avaliação:", error);
-      alert("Erro ao enviar avaliação. Tente novamente.");
+
+      // Handle specific error cases
+      if (error.message === "ALREADY_REVIEWED") {
+        alert(
+          "Já submeteu uma avaliação para esta casa de banho recentemente. Tente novamente mais tarde."
+        );
+      } else {
+        alert("Erro ao enviar avaliação. Tente novamente.");
+      }
     } finally {
       setIsSubmittingReview(false);
       submissionInProgressRef.current = false;
