@@ -42,11 +42,11 @@ interface BathroomDetailsProps {
     review: {
       rating: number;
       comment: string;
-      user: string;
-      cleanliness?: number;
-      paperSupply?: number;
-      privacy?: number;
-      paperAvailable?: boolean;
+      user_name: string;
+      cleanliness: number;
+      paper_supply: number;
+      privacy: number;
+      paper_available?: boolean;
     }
   ) => void;
 }
@@ -63,10 +63,11 @@ export function BathroomDetails({
   // anchors to enable smooth scrolling inside the modal content
   const reviewsAnchorId = "all-reviews";
   const formAnchorId = "review-form";
-  const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
   const [reviewerName, setReviewerName] = useState("");
   const [paperAvailable, setPaperAvailable] = useState<boolean>(true);
+  const [cleanlinessRating, setCleanlinessRating] = useState(0);
+  const [privacyRating, setPrivacyRating] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -76,8 +77,8 @@ export function BathroomDetails({
   if (!bathroom) return null;
 
   const handleSubmitReview = async () => {
-    if (reviewRating === 0) {
-      alert("Por favor, dê uma classificação geral.");
+    if (cleanlinessRating === 0 || privacyRating === 0) {
+      alert("Por favor, avalie a limpeza e privacidade.");
       return;
     }
 
@@ -94,18 +95,25 @@ export function BathroomDetails({
     setIsSubmittingReview(true);
 
     try {
+      // Calculate overall rating from cleanliness and privacy
+      const finalRating = Math.round((cleanlinessRating + privacyRating) / 2);
+
       await onReviewSubmit(bathroom.id, {
-        rating: reviewRating,
+        rating: finalRating,
         comment: reviewComment.trim(),
-        user: reviewerName.trim() || "Anónimo",
-        paperAvailable,
+        user_name: reviewerName.trim() || "Anónimo",
+        cleanliness: cleanlinessRating,
+        paper_supply: paperAvailable ? 5 : 1, // Set based on availability: 5 if available, 1 if not
+        privacy: privacyRating,
+        paper_available: paperAvailable,
       });
 
       // Reset form
       setReviewComment("");
       setReviewerName("");
-      setReviewRating(0);
       setPaperAvailable(true);
+      setCleanlinessRating(0);
+      setPrivacyRating(0);
 
       // Show success modal with faster timing and cool animations
       setShowSuccessModal(true);
@@ -201,6 +209,20 @@ export function BathroomDetails({
     );
   };
 
+  const getPaperAvailabilityText = (percentage: number): string => {
+    if (percentage >= 60) return "Disponível";
+    if (percentage >= 40) return "Dúvidas na disponibilidade";
+    return "Indisponível";
+  };
+
+  const getPaperAvailabilityColor = (percentage: number): string => {
+    if (percentage >= 60)
+      return "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200";
+    if (percentage >= 40)
+      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200";
+    return "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200";
+  };
+
   const getFeatureIcon = (feature: string) => {
     switch (feature.toLowerCase()) {
       case "wifi":
@@ -211,7 +233,7 @@ export function BathroomDetails({
       case "baby changing":
       case "fraldário":
         return <Baby className="h-4 w-4" />;
-      case "accessibility":
+      case "has_accessible":
       case "acessibilidade":
         return <Accessibility className="h-4 w-4" />;
       default:
@@ -436,14 +458,14 @@ export function BathroomDetails({
                 </div>
                 <div
                   className={`text-base font-bold px-2 py-1 rounded-md ${
-                    bathroom.paper_supply === "Bom"
-                      ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200"
-                      : bathroom.paper_supply === "Médio"
-                      ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200"
-                      : "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200"
+                    bathroom.paper_availability !== undefined
+                      ? getPaperAvailabilityColor(bathroom.paper_availability)
+                      : "bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-200"
                   }`}
                 >
-                  {bathroom.paper_supply}
+                  {bathroom.paper_availability !== undefined
+                    ? getPaperAvailabilityText(bathroom.paper_availability)
+                    : "Sem dados"}
                 </div>
               </div>
               <div className="text-center space-y-1">
@@ -570,10 +592,10 @@ export function BathroomDetails({
                   <Star className="h-6 w-6 text-white fill-white" />
                 </div>
                 <h3 className="text-lg font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-1">
-                  Ajude a comunidade! 🌟
+                  Avalie a limpeza e privacidade! 🌟
                 </h3>
                 <p className="text-xs text-gray-600 dark:text-gray-400">
-                  Sua avaliação faz a diferença
+                  A classificação geral será calculada automaticamente
                 </p>
               </div>
 
@@ -626,22 +648,82 @@ export function BathroomDetails({
                   </div>
                 </div>
 
-                {/* Overall Rating - Required */}
-                <div className="space-y-3 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20 p-3 rounded-lg border border-yellow-200/50 dark:border-yellow-800/50">
-                  <label className="flex items-center gap-2 text-base font-bold text-gray-900 dark:text-white">
-                    <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 flex-shrink-0" />
-                    <span>Classificação *</span>
-                  </label>
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex gap-1">
-                      {renderStars(reviewRating, true, setReviewRating)}
+                {/* Detailed Ratings - Required */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    Avaliações específicas *
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
+                        <Star className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                        <span className="truncate">Limpeza</span>
+                      </label>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setCleanlinessRating(star)}
+                            className="focus:outline-none"
+                          >
+                            <Star
+                              className={`h-5 w-5 ${
+                                star <= cleanlinessRating
+                                  ? "fill-blue-400 text-blue-400"
+                                  : "text-gray-300"
+                              }`}
+                            />
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                    {reviewRating > 0 && (
-                      <span className="text-sm font-bold text-purple-600 dark:text-purple-400 flex-shrink-0">
-                        {reviewRating}/5
-                      </span>
-                    )}
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
+                        <Star className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                        <span className="truncate">Privacidade</span>
+                      </label>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setPrivacyRating(star)}
+                            className="focus:outline-none"
+                          >
+                            <Star
+                              className={`h-5 w-5 ${
+                                star <= privacyRating
+                                  ? "fill-purple-400 text-purple-400"
+                                  : "text-gray-300"
+                              }`}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
+                  {/* Show calculated rating */}
+                  {cleanlinessRating > 0 && privacyRating > 0 && (
+                    <div className="mt-3 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20 rounded-lg border border-yellow-200/50 dark:border-yellow-800/50">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                          Classificação geral calculada:
+                        </span>
+                        <div className="flex items-center gap-2">
+                          {renderStars(
+                            Math.round((cleanlinessRating + privacyRating) / 2)
+                          )}
+                          <span className="text-sm font-bold text-purple-600 dark:text-purple-400">
+                            {Math.round(
+                              (cleanlinessRating + privacyRating) / 2
+                            )}
+                            /5
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Comment - Optional */}
@@ -658,10 +740,14 @@ export function BathroomDetails({
                   />
                 </div>
 
-                {/* Submit - Only requires rating */}
+                {/* Submit - Requires cleanliness and privacy */}
                 <Button
                   onClick={handleSubmitReview}
-                  disabled={isSubmittingReview || reviewRating === 0}
+                  disabled={
+                    isSubmittingReview ||
+                    cleanlinessRating === 0 ||
+                    privacyRating === 0
+                  }
                   className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
                 >
                   {isSubmittingReview ? (
@@ -678,7 +764,7 @@ export function BathroomDetails({
                 </Button>
 
                 <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                  * Apenas a classificação é obrigatória
+                  * Limpeza e privacidade são obrigatórias
                 </p>
               </div>
             </Card>
@@ -688,7 +774,7 @@ export function BathroomDetails({
         <div className="sticky bottom-0 z-10 bg-gradient-to-r from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 supports-[backdrop-filter]:backdrop-blur-lg border-t border-border/60 px-4 py-4 sm:px-6 shadow-lg">
           <div className="flex items-center justify-between">
             <div className="text-xs text-gray-500 dark:text-gray-400">
-              Última limpeza: {bathroom.last_cleaned}
+              Última atualização: {new Date().toLocaleDateString("pt-PT")}
             </div>
             <Button
               variant="outline"

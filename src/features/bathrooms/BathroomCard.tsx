@@ -72,7 +72,7 @@ export function BathroomCard({
           </div>
         )}
 
-        {bathroom.accessibility && (
+        {bathroom.has_accessible && (
           <Badge variant="outline" className="mt-2 text-xs">
             ♿ Acessível
           </Badge>

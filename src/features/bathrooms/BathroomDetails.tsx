@@ -83,7 +83,7 @@ export function BathroomDetails({
               <div className="flex items-center justify-center gap-1 mb-1">
                 <CheckCircle className="h-4 w-4 text-green-500" />
                 <span className="font-bold text-lg">
-                  {bathroom.accessibility ? "Sim" : "Não"}
+                  {bathroom.has_accessible ? "Sim" : "Não"}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">Acessível</p>

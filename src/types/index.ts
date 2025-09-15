@@ -8,7 +8,7 @@ export interface Review {
   cleanliness: number;
   paper_supply: number; // Changed from paperSupply to match database
   privacy: number;
-  paperAvailable?: boolean;
+  paper_available?: boolean; // Changed from paperAvailable to match database
   created_at?: string; // Database timestamp
   updated_at?: string; // Database timestamp
 }
@@ -17,21 +17,22 @@ export interface Bathroom {
   id: string;
   name: string;
   building: string;
-  distance: number;
-  rating: number;
-  review_count: number; // Changed from reviewCount to match database
-  cleanliness: string;
   x: number; // Position on map (percentage)
   y: number; // Position on map (percentage)
   floor: string;
   facilities: string[];
-  accessibility: boolean;
-  paper_supply: "Bom" | "Médio" | "Fraco"; // Changed from paperSupply to match database
-  privacy: "Excelente" | "Boa" | "Média";
-  last_cleaned: string; // Changed from lastCleaned to match database
-  reviews?: Review[]; // Optional, loaded separately
-  has_accessible?: boolean; // Changed from hasAccessible to match database
-  dynamicDistance?: number; // Calculated distance when user location is available
+  has_accessible?: boolean;
+  // Campos calculados dinamicamente baseados nas reviews
+  rating?: number; // Calculado da média das reviews
+  review_count?: number; // Contagem de reviews
+  cleanliness?: string; // Calculado da média das reviews
+  paper_supply?: "Bom" | "Médio" | "Fraco"; // Calculado da média das reviews
+  paper_availability?: number; // Percentagem de disponibilidade de papel higiênico
+  privacy?: "Excelente" | "Boa" | "Média"; // Calculado da média das reviews
+  // Campos calculados na aplicação
+  distance?: number; // Calculado baseado na localização do usuário
+  dynamicDistance?: number; // Distância calculada quando localização está disponível
+  reviews?: Review[]; // Reviews carregadas separadamente
   created_at?: string; // Database timestamp
   updated_at?: string; // Database timestamp
 }

@@ -17,7 +17,7 @@ interface BathroomCardProps {
   rating: number;
   review_count: number;
   cleanliness: string;
-  accessibility?: boolean;
+  has_accessible?: boolean;
   paper_supply?: string;
   isClosest?: boolean;
   onViewDetails?: () => void;
@@ -32,7 +32,7 @@ export function BathroomCard({
   rating,
   review_count,
   cleanliness,
-  accessibility,
+  has_accessible,
   paper_supply,
   isClosest = false,
   onViewDetails,
@@ -59,7 +59,7 @@ export function BathroomCard({
               <h3 className="font-bold text-foreground text-base leading-tight">
                 {name}
               </h3>
-              {accessibility && (
+              {has_accessible && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger>

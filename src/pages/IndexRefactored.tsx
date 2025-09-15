@@ -25,7 +25,7 @@ import { SidebarMenu } from "@/components/sidebar-menu";
 // Settings (could be moved to a config file)
 const settings = {
   showDistanceOffCampus: false,
-  defaultFloor: "0" as string | null,
+  defaultFloor: "0",
 };
 
 const HEADER_OFFSET = 80;

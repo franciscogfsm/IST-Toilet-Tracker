@@ -15,9 +15,9 @@ interface ReviewFormProps {
 interface ReviewData {
   rating: number;
   comment: string;
-  user: string;
+  user_name: string;
   cleanliness: number;
-  paperSupply: number;
+  paper_supply: number;
   privacy: number;
 }
 
@@ -29,9 +29,9 @@ export function ReviewForm({
   const [formData, setFormData] = useState<ReviewData>({
     rating: 5,
     comment: "",
-    user: "",
+    user_name: "",
     cleanliness: 5,
-    paperSupply: 5,
+    paper_supply: 5,
     privacy: 5,
   });
 
@@ -39,7 +39,7 @@ export function ReviewForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.user.trim() || !formData.comment.trim()) {
+    if (!formData.user_name.trim() || !formData.comment.trim()) {
       alert("Por favor preencha todos os campos obrigatórios.");
       return;
     }
@@ -95,12 +95,12 @@ export function ReviewForm({
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="user">Nome *</Label>
+            <Label htmlFor="user_name">Nome *</Label>
             <Input
-              id="user"
-              value={formData.user}
+              id="user_name"
+              value={formData.user_name}
               onChange={(e) =>
-                setFormData((prev) => ({ ...prev, user: e.target.value }))
+                setFormData((prev) => ({ ...prev, user_name: e.target.value }))
               }
               placeholder="Seu nome"
               required
@@ -125,11 +125,11 @@ export function ReviewForm({
 
           <RatingInput
             label="Fornecimento de Papel"
-            value={formData.paperSupply}
-            onChange={(paperSupply) =>
-              setFormData((prev) => ({ ...prev, paperSupply }))
+            value={formData.paper_supply}
+            onChange={(paper_supply) =>
+              setFormData((prev) => ({ ...prev, paper_supply }))
             }
-            name="paperSupply"
+            name="paper_supply"
           />
 
           <RatingInput

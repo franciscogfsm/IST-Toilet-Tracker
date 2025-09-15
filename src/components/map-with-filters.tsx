@@ -12,9 +12,9 @@ interface MapWithFiltersProps {
 
 export function MapWithFilters({
   onBathroomSelect,
-  bathroomData = bathrooms,
+  bathroomData = [],
   isModalOpen = false,
-  defaultFloor = "0",
+  defaultFloor,
 }: MapWithFiltersProps) {
   const [filteredBathrooms, setFilteredBathrooms] = useState<Bathroom[]>(() => {
     if (defaultFloor && bathroomData.some((b) => b.floor === defaultFloor)) {
@@ -147,7 +147,7 @@ function CompactBathroomFilters({
     }
 
     if (showAccessibleOnly) {
-      filtered = filtered.filter((bathroom) => bathroom.accessibility);
+      filtered = filtered.filter((bathroom) => bathroom.has_accessible);
     }
 
     onFilterChange(filtered);
@@ -306,7 +306,7 @@ function CompactBathroomFilters({
                             (b) => b.building === selectedBuilding
                           );
                         if (showAccessibleOnly)
-                          filtered = filtered.filter((b) => b.accessibility);
+                          filtered = filtered.filter((b) => b.has_accessible);
                         return filtered.length > 0;
                       }).length
                     }/${allBathrooms.length}`
@@ -455,7 +455,7 @@ function CompactBathroomFilters({
                           (b) => b.building === selectedBuilding
                         );
                       if (showAccessibleOnly)
-                        filtered = filtered.filter((b) => b.accessibility);
+                        filtered = filtered.filter((b) => b.has_accessible);
                       return filtered.length > 0;
                     }).length
                   }/${allBathrooms.length} casas de banho`

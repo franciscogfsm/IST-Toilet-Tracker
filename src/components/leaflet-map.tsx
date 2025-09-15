@@ -434,7 +434,7 @@ export function LeafletMap({
   name: string;
   building: string;
   floor: string;
-  accessibility: string;
+    accessibility: string;
   x: number;
   y: number;
 }
@@ -448,7 +448,7 @@ ${editableBathrooms
     name: "${bathroom.name}",
     building: "${bathroom.building}",
     floor: "${bathroom.floor}",
-    accessibility: "${bathroom.accessibility}",
+    accessibility: "${bathroom.has_accessible}",
     x: ${bathroom.x.toFixed(1)},
     y: ${bathroom.y.toFixed(1)},
   }`
@@ -825,7 +825,7 @@ ${editableBathrooms
                         Privacidade: {bathroom.privacy}
                       </span>
                     </div>
-                    {bathroom.accessibility && (
+                    {bathroom.has_accessible && (
                       <span className="text-xs text-green-600 flex items-center gap-1">
                         <Accessibility className="h-3 w-3" />
                         Acessível

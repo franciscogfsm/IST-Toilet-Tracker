@@ -64,7 +64,7 @@ export function BathroomFilters({
     }
 
     if (showAccessibleOnly) {
-      filtered = filtered.filter((bathroom) => bathroom.accessibility);
+      filtered = filtered.filter((bathroom) => bathroom.has_accessible);
     }
 
     onFilterChange(filtered);
@@ -272,7 +272,7 @@ export function BathroomFilters({
                       (b) => b.building === selectedBuilding
                     );
                   if (showAccessibleOnly)
-                    filtered = filtered.filter((b) => b.accessibility);
+                    filtered = filtered.filter((b) => b.has_accessible);
                   return filtered.length > 0;
                 }).length
               } de ${allBathrooms.length} casas de banho`

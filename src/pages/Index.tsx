@@ -152,7 +152,7 @@ const Index = () => {
   const [showBackToTop, setShowBackToTop] = useState(false);
   const settings = {
     showDistanceOffCampus: false,
-    defaultFloor: "0" as string | null, // R/C default
+    defaultFloor: "0", // Default to ground floor (R/C)
   };
 
   // Loading states for skeleton components
@@ -532,11 +532,11 @@ const Index = () => {
     reviewData: {
       rating: number;
       comment: string;
-      user: string;
+      user_name: string;
       cleanliness?: number;
-      paperSupply?: number;
+      paper_supply?: number;
       privacy?: number;
-      paperAvailable?: boolean;
+      paper_available?: boolean;
     }
   ) => {
     try {
@@ -622,7 +622,6 @@ const Index = () => {
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 

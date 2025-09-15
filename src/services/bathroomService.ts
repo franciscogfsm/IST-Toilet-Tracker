@@ -9,22 +9,83 @@ type ReviewInsert = Database["public"]["Tables"]["reviews"]["Insert"];
 
 export class BathroomService {
   static async getAllBathrooms() {
-    const { data, error } = await supabase
-      .from("bathrooms")
-      .select(
-        `
+    const { data, error } = await supabase.from("bathrooms").select(
+      `
         *,
         reviews (*)
       `
-      )
-      .order("rating", { ascending: false });
+    );
 
     if (error) {
       console.error("Error fetching bathrooms:", error);
       throw error;
     }
 
-    return data || [];
+    // Calcular campos dinamicamente para cada banheiro
+    const bathroomsWithCalculatedFields = (data || []).map((bathroom) => {
+      const reviews = bathroom.reviews || [];
+
+      if (reviews.length === 0) {
+        return {
+          ...bathroom,
+          rating: undefined,
+          review_count: 0,
+          cleanliness: undefined,
+          paper_supply: undefined,
+          paper_availability: undefined,
+          privacy: undefined,
+        };
+      }
+
+      // Calcular rating médio
+      const avgRating =
+        reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+
+      // Calcular review_count
+      const reviewCount = reviews.length;
+
+      // Calcular cleanliness médio
+      const avgCleanliness =
+        reviews.reduce((sum, r) => sum + r.cleanliness, 0) / reviews.length;
+      const cleanlinessLabel = this.getCleanlinessLabel(avgCleanliness);
+
+      // Calcular paper_supply médio
+      const avgPaperSupply =
+        reviews.reduce((sum, r) => sum + r.paper_supply, 0) / reviews.length;
+      const paperSupplyLabel = this.getPaperSupplyLabel(avgPaperSupply);
+
+      // Calcular paper availability percentage
+      const availableReviews = reviews.filter(
+        (r) => r.paper_available === true
+      ).length;
+      const paperAvailabilityPercent =
+        reviews.length > 0
+          ? Math.round((availableReviews / reviews.length) * 100)
+          : 0;
+
+      // Calcular privacy médio
+      const avgPrivacy =
+        reviews.reduce((sum, r) => sum + r.privacy, 0) / reviews.length;
+      const privacyLabel = this.getPrivacyLabel(avgPrivacy);
+
+      return {
+        ...bathroom,
+        rating: Math.round(avgRating * 10) / 10,
+        review_count: reviewCount,
+        cleanliness: cleanlinessLabel,
+        paper_supply: paperSupplyLabel,
+        paper_availability: paperAvailabilityPercent,
+        privacy: privacyLabel,
+      };
+    });
+
+    // Ordenar por rating (banheiros sem reviews ficam por último)
+    return bathroomsWithCalculatedFields.sort((a, b) => {
+      if (a.rating === undefined && b.rating === undefined) return 0;
+      if (a.rating === undefined) return 1;
+      if (b.rating === undefined) return -1;
+      return b.rating - a.rating;
+    });
   }
 
   static async getBathroomById(id: string) {
@@ -99,15 +160,66 @@ export class BathroomService {
         reviews (*)
       `
       )
-      .eq("building", building)
-      .order("rating", { ascending: false });
+      .eq("building", building);
 
     if (error) {
       console.error("Error fetching bathrooms by building:", error);
       throw error;
     }
 
-    return data || [];
+    // Calcular campos dinamicamente
+    const bathroomsWithCalculatedFields = (data || []).map((bathroom) => {
+      const reviews = bathroom.reviews || [];
+
+      if (reviews.length === 0) {
+        return {
+          ...bathroom,
+          rating: undefined,
+          review_count: 0,
+          cleanliness: undefined,
+          paper_supply: undefined,
+          paper_availability: undefined,
+          privacy: undefined,
+        };
+      }
+
+      const avgRating =
+        reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+      const reviewCount = reviews.length;
+      const avgCleanliness =
+        reviews.reduce((sum, r) => sum + r.cleanliness, 0) / reviews.length;
+      const avgPaperSupply =
+        reviews.reduce((sum, r) => sum + r.paper_supply, 0) / reviews.length;
+      const avgPrivacy =
+        reviews.reduce((sum, r) => sum + r.privacy, 0) / reviews.length;
+
+      // Calcular paper availability percentage
+      const availableReviews = reviews.filter(
+        (r) => r.paper_available === true
+      ).length;
+      const paperAvailabilityPercent =
+        reviews.length > 0
+          ? Math.round((availableReviews / reviews.length) * 100)
+          : 0;
+
+      return {
+        ...bathroom,
+        rating: Math.round(avgRating * 10) / 10,
+        review_count: reviewCount,
+        cleanliness: this.getCleanlinessLabel(avgCleanliness),
+        paper_supply: this.getPaperSupplyLabel(avgPaperSupply),
+        paper_availability: paperAvailabilityPercent,
+        privacy: this.getPrivacyLabel(avgPrivacy),
+      };
+    });
+
+    // Ordenar por rating
+    return bathroomsWithCalculatedFields.sort((a, b) => {
+      if (a.rating === undefined && b.rating === undefined) return 0;
+      if (a.rating === undefined) return 1;
+      if (b.rating === undefined) return -1;
+      return b.rating - a.rating;
+    });
   }
 
   static async getBathroomsByFloor(floor: string) {
@@ -119,15 +231,66 @@ export class BathroomService {
         reviews (*)
       `
       )
-      .eq("floor", floor)
-      .order("rating", { ascending: false });
+      .eq("floor", floor);
 
     if (error) {
       console.error("Error fetching bathrooms by floor:", error);
       throw error;
     }
 
-    return data || [];
+    // Calcular campos dinamicamente
+    const bathroomsWithCalculatedFields = (data || []).map((bathroom) => {
+      const reviews = bathroom.reviews || [];
+
+      if (reviews.length === 0) {
+        return {
+          ...bathroom,
+          rating: undefined,
+          review_count: 0,
+          cleanliness: undefined,
+          paper_supply: undefined,
+          paper_availability: undefined,
+          privacy: undefined,
+        };
+      }
+
+      const avgRating =
+        reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+      const reviewCount = reviews.length;
+      const avgCleanliness =
+        reviews.reduce((sum, r) => sum + r.cleanliness, 0) / reviews.length;
+      const avgPaperSupply =
+        reviews.reduce((sum, r) => sum + r.paper_supply, 0) / reviews.length;
+      const avgPrivacy =
+        reviews.reduce((sum, r) => sum + r.privacy, 0) / reviews.length;
+
+      // Calcular paper availability percentage
+      const availableReviews = reviews.filter(
+        (r) => r.paper_available === true
+      ).length;
+      const paperAvailabilityPercent =
+        reviews.length > 0
+          ? Math.round((availableReviews / reviews.length) * 100)
+          : 0;
+
+      return {
+        ...bathroom,
+        rating: Math.round(avgRating * 10) / 10,
+        review_count: reviewCount,
+        cleanliness: this.getCleanlinessLabel(avgCleanliness),
+        paper_supply: this.getPaperSupplyLabel(avgPaperSupply),
+        paper_availability: paperAvailabilityPercent,
+        privacy: this.getPrivacyLabel(avgPrivacy),
+      };
+    });
+
+    // Ordenar por rating
+    return bathroomsWithCalculatedFields.sort((a, b) => {
+      if (a.rating === undefined && b.rating === undefined) return 0;
+      if (a.rating === undefined) return 1;
+      if (b.rating === undefined) return -1;
+      return b.rating - a.rating;
+    });
   }
 
   static async searchBathrooms(query: string) {
@@ -141,15 +304,66 @@ export class BathroomService {
       )
       .or(
         `name.ilike.%${query}%,building.ilike.%${query}%,floor.ilike.%${query}%`
-      )
-      .order("rating", { ascending: false });
+      );
 
     if (error) {
       console.error("Error searching bathrooms:", error);
       throw error;
     }
 
-    return data || [];
+    // Calcular campos dinamicamente
+    const bathroomsWithCalculatedFields = (data || []).map((bathroom) => {
+      const reviews = bathroom.reviews || [];
+
+      if (reviews.length === 0) {
+        return {
+          ...bathroom,
+          rating: undefined,
+          review_count: 0,
+          cleanliness: undefined,
+          paper_supply: undefined,
+          paper_availability: undefined,
+          privacy: undefined,
+        };
+      }
+
+      const avgRating =
+        reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+      const reviewCount = reviews.length;
+      const avgCleanliness =
+        reviews.reduce((sum, r) => sum + r.cleanliness, 0) / reviews.length;
+      const avgPaperSupply =
+        reviews.reduce((sum, r) => sum + r.paper_supply, 0) / reviews.length;
+      const avgPrivacy =
+        reviews.reduce((sum, r) => sum + r.privacy, 0) / reviews.length;
+
+      // Calcular paper availability percentage
+      const availableReviews = reviews.filter(
+        (r) => r.paper_available === true
+      ).length;
+      const paperAvailabilityPercent =
+        reviews.length > 0
+          ? Math.round((availableReviews / reviews.length) * 100)
+          : 0;
+
+      return {
+        ...bathroom,
+        rating: Math.round(avgRating * 10) / 10,
+        review_count: reviewCount,
+        cleanliness: this.getCleanlinessLabel(avgCleanliness),
+        paper_supply: this.getPaperSupplyLabel(avgPaperSupply),
+        paper_availability: paperAvailabilityPercent,
+        privacy: this.getPrivacyLabel(avgPrivacy),
+      };
+    });
+
+    // Ordenar por rating
+    return bathroomsWithCalculatedFields.sort((a, b) => {
+      if (a.rating === undefined && b.rating === undefined) return 0;
+      if (a.rating === undefined) return 1;
+      if (b.rating === undefined) return -1;
+      return b.rating - a.rating;
+    });
   }
 
   static async getUniqueBuildings(): Promise<string[]> {
@@ -198,65 +412,7 @@ export class BathroomService {
       throw error;
     }
 
-    // Update bathroom stats after adding review
-    await this.updateBathroomStats(bathroomId);
-  }
-
-  private static async updateBathroomStats(bathroomId: string) {
-    // Get all reviews for this bathroom
-    const { data: reviews, error: reviewsError } = await supabase
-      .from("reviews")
-      .select("rating, cleanliness, paper_supply, privacy")
-      .eq("bathroom_id", bathroomId);
-
-    if (reviewsError) {
-      console.error("Error fetching reviews for stats update:", reviewsError);
-      return;
-    }
-
-    if (!reviews || reviews.length === 0) {
-      // No reviews, reset to default values
-      await supabase
-        .from("bathrooms")
-        .update({
-          rating: 0,
-          review_count: 0,
-          cleanliness: "Não avaliado",
-          paper_supply: "Não avaliado" as any,
-          privacy: "Não avaliado" as any,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", bathroomId);
-      return;
-    }
-
-    // Calculate averages
-    const avgRating =
-      reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
-    const avgCleanliness =
-      reviews.reduce((sum, r) => sum + r.cleanliness, 0) / reviews.length;
-    const avgPaperSupply =
-      reviews.reduce((sum, r) => sum + r.paper_supply, 0) / reviews.length;
-    const avgPrivacy =
-      reviews.reduce((sum, r) => sum + r.privacy, 0) / reviews.length;
-
-    // Convert numerical averages to categorical values
-    const cleanlinessLabel = this.getCleanlinessLabel(avgCleanliness);
-    const paperSupplyLabel = this.getPaperSupplyLabel(avgPaperSupply);
-    const privacyLabel = this.getPrivacyLabel(avgPrivacy);
-
-    // Update bathroom with new stats
-    await supabase
-      .from("bathrooms")
-      .update({
-        rating: Math.round(avgRating * 10) / 10,
-        review_count: reviews.length,
-        cleanliness: cleanlinessLabel,
-        paper_supply: paperSupplyLabel,
-        privacy: privacyLabel,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", bathroomId);
+    // Não precisamos mais atualizar estatísticas estáticas - elas são calculadas dinamicamente
   }
 
   private static getCleanlinessLabel(avg: number): string {
@@ -307,8 +463,7 @@ export class BathroomService {
     // Get buildings count (buildings that have at least one review)
     const { data: buildingsData, error: buildingsError } = await supabase
       .from("bathrooms")
-      .select("building")
-      .not("review_count", "eq", 0);
+      .select("building, reviews!inner(*)");
 
     if (buildingsError) {
       console.error("Error fetching buildings with reviews:", buildingsError);
