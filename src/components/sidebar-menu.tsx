@@ -193,6 +193,14 @@ export function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
                 <Mail className="h-4 w-4 mr-3" />
                 <span className="font-medium">Email</span>
               </Button>
+              <Button
+                className="w-full h-11 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white text-sm rounded-xl shadow active:scale-95 transition-transform mobile-button"
+                onClick={() =>
+                  handleNavigation("https://github.com/franciscogfsm/caganisto")
+                }
+              >
+                <Github className="h-4 w-4 mr-3" /> Contribuir no GitHub
+              </Button>
             </div>
           </div>
         </div>
@@ -208,7 +216,7 @@ export function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
                 beta
               </span>
             </div>
-            <div className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <Button
                 variant="secondary"
                 size="sm"
@@ -216,6 +224,14 @@ export function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
                 onClick={() => handleNavigation("#stats")}
               >
                 <Star className="h-4 w-4 mr-2" /> Top 5
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-10 text-sm px-3 rounded-xl hover:scale-105 active:scale-95 transition-transform touch-manipulation mobile-button"
+                onClick={() => handleNavigation("#map")}
+              >
+                <Map className="h-4 w-4 mr-2" /> Mapa
               </Button>
             </div>
           </div>

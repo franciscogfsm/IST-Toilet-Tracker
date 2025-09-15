@@ -13,6 +13,22 @@ const App = () => {
   // Force light mode by removing any persisted 'dark' class
   useEffect(() => {
     document.documentElement.classList.remove("dark");
+    // Always restore scroll to top on reload/route entries
+    if ("scrollRestoration" in window.history) {
+      try {
+        window.history.scrollRestoration = "manual" as any;
+      } catch {}
+    }
+    // Ensure we're at the very top after hydration
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    // Also force once after the window fully loads (prevents partial restore)
+    const onLoad = () => window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    window.addEventListener("load", onLoad, { once: true });
+    const t = setTimeout(() => onLoad(), 50);
+    return () => {
+      window.removeEventListener("load", onLoad);
+      clearTimeout(t);
+    };
   }, []);
 
   return (

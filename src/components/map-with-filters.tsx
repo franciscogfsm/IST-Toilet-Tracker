@@ -165,6 +165,17 @@ function CompactBathroomFilters({
     applyFilters();
   }, [selectedFloor, selectedBuilding, showAccessibleOnly, allBathrooms]);
 
+  // If bathrooms load after mount and we have a default floor, select it
+  useEffect(() => {
+    if (
+      !selectedFloor &&
+      defaultFloor &&
+      allBathrooms.some((b) => b.floor === defaultFloor)
+    ) {
+      setSelectedFloor(defaultFloor);
+    }
+  }, [allBathrooms, defaultFloor, selectedFloor]);
+
   const hasActiveFilters =
     selectedFloor || selectedBuilding || showAccessibleOnly;
 
