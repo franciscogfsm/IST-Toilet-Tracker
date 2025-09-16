@@ -103,28 +103,44 @@ export class DeviceFingerprint {
   }
 
   /**
-   * Check if device has already reviewed a specific bathroom
+   * Check if device has already reviewed a specific bathroom today
    */
   static hasReviewedBathroom(bathroomId: string): boolean {
     const fingerprint = this.getFingerprint();
     const key = `${this.FINGERPRINT_KEY}_${bathroomId}`;
-    const reviewedDevices = JSON.parse(localStorage.getItem(key) || "[]");
+    const reviewData = JSON.parse(localStorage.getItem(key) || "[]");
 
-    return reviewedDevices.includes(fingerprint);
+    const today = new Date().toISOString().split("T")[0];
+
+    // Check if this device has reviewed today
+    return reviewData.some(
+      (review: any) =>
+        review.fingerprint === fingerprint && review.date === today
+    );
   }
 
   /**
-   * Mark that this device has reviewed a specific bathroom
+   * Mark that this device has reviewed a specific bathroom today
    */
   static markReviewedBathroom(bathroomId: string): void {
     const fingerprint = this.getFingerprint();
     const key = `${this.FINGERPRINT_KEY}_${bathroomId}`;
-    const reviewedDevices = JSON.parse(localStorage.getItem(key) || "[]");
+    const reviewData = JSON.parse(localStorage.getItem(key) || "[]");
+    const today = new Date().toISOString().split("T")[0];
 
-    if (!reviewedDevices.includes(fingerprint)) {
-      reviewedDevices.push(fingerprint);
-      localStorage.setItem(key, JSON.stringify(reviewedDevices));
-    }
+    // Remove any existing review for this device today (shouldn't happen, but just in case)
+    const filteredData = reviewData.filter(
+      (review: any) =>
+        !(review.fingerprint === fingerprint && review.date === today)
+    );
+
+    // Add today's review
+    filteredData.push({
+      fingerprint: fingerprint,
+      date: today,
+    });
+
+    localStorage.setItem(key, JSON.stringify(filteredData));
   }
 
   /**
@@ -153,9 +169,14 @@ export class DeviceFingerprint {
   static getOwnReviewIdsForBathroom(bathroomId: string): string[] {
     const fingerprint = this.getFingerprint();
     const key = `${this.FINGERPRINT_KEY}_${bathroomId}`;
-    const reviewedDevices = JSON.parse(localStorage.getItem(key) || "[]");
+    const reviewData = JSON.parse(localStorage.getItem(key) || "[]");
 
-    if (!reviewedDevices.includes(fingerprint)) {
+    // Check if this device has any reviews for this bathroom
+    const hasReviewed = reviewData.some(
+      (review: any) => review.fingerprint === fingerprint
+    );
+
+    if (!hasReviewed) {
       return [];
     }
 

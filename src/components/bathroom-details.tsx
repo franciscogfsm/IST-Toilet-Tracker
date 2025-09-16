@@ -174,7 +174,7 @@ export function BathroomDetails({
           setTimeout(() => {
             onClose();
           }, 200); // Faster transition
-        }, 2000);
+        }, 5000);
       } else {
         alert("Erro ao enviar avaliação. Tente novamente.");
       }
@@ -1243,13 +1243,13 @@ export function BathroomDetails({
 
             <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300">
               <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                Avaliação já existe! ⚠️
+                Avaliação já existe hoje! ⚠️
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Você já avaliou esta casa de banho anteriormente.
+                Você já avaliou esta casa de banho hoje.
               </p>
               <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">
-                Só é permitida uma avaliação por dispositivo
+                Só é permitida uma avaliação por dispositivo por dia
               </p>
             </div>
 
