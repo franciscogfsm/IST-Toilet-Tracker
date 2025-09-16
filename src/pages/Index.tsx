@@ -138,6 +138,8 @@ const Index = () => {
   const [pendingReviewBathroomId, setPendingReviewBathroomId] =
     useState<string>("");
   const [selectedBuilding, setSelectedBuilding] = useState<string>("");
+  const [selectedBuildingForReview, setSelectedBuildingForReview] =
+    useState<string>("");
   const aboutRef = useRef<HTMLDivElement | null>(null);
   const [aboutVisible, setAboutVisible] = useState(false);
   const reviewsRef = useRef<HTMLDivElement | null>(null);
@@ -323,11 +325,13 @@ const Index = () => {
     () =>
       bathroomData
         .filter((b) =>
-          selectedBuilding ? b.building === selectedBuilding : true
+          selectedBuildingForReview
+            ? b.building === selectedBuildingForReview
+            : true
         )
         .slice()
         .sort((a, b) => a.name.localeCompare(b.name)),
-    [bathroomData, selectedBuilding]
+    [bathroomData, selectedBuildingForReview]
   );
 
   // Filter bathrooms based on search (name, building, or floor)
@@ -520,9 +524,8 @@ const Index = () => {
   useEffect(() => {
     updateFilters({
       query: searchQuery,
-      building: selectedBuilding,
     });
-  }, [searchQuery, selectedBuilding, updateFilters]);
+  }, [searchQuery, updateFilters]);
 
   const handleViewBathroomDetails = (bathroom: Bathroom) => {
     setSelectedBathroomDetails(bathroom);
@@ -961,9 +964,9 @@ const Index = () => {
             <div className="max-w-xl mx-auto mb-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
               {/* Building */}
               <Select
-                value={selectedBuilding}
+                value={selectedBuildingForReview}
                 onValueChange={(val) => {
-                  setSelectedBuilding(val);
+                  setSelectedBuildingForReview(val);
                   setPendingReviewBathroomId("");
                 }}
               >
@@ -986,7 +989,7 @@ const Index = () => {
               <Select
                 value={pendingReviewBathroomId}
                 onValueChange={setPendingReviewBathroomId}
-                disabled={!selectedBuilding}
+                disabled={!selectedBuildingForReview}
               >
                 <SelectTrigger className="w-full bg-white/80 dark:bg-gray-800/80">
                   <SelectValue placeholder="Casa de banho" />
