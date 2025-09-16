@@ -27,7 +27,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SearchInput } from "@/components/ui/search-input";
 import { BathroomCard } from "@/components/bathroom-card";
 import { MapWithFilters } from "@/components/map-with-filters";
-import { ReviewForm } from "@/components/review-form";
 import { QuickStats } from "@/components/quick-stats";
 import { BathroomDetails } from "@/components/bathroom-details";
 import { SidebarMenu } from "@/components/sidebar-menu";
@@ -35,7 +34,7 @@ import { useBathrooms } from "@/hooks/useBathrooms";
 import { Bathroom, Review } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Suspense, lazy } from "react";
-import { useToast } from "@/hooks/use-toast";
+// Removed toast usage for review flow; modals handle feedback now
 
 // Lazy-load heavy components for better performance
 const LazyMapWithFilters = lazy(() =>
@@ -53,12 +52,6 @@ const LazyBathroomCard = lazy(() =>
 const LazyBathroomDetails = lazy(() =>
   import("@/components/bathroom-details").then((m) => ({
     default: m.BathroomDetails,
-  }))
-);
-
-const LazyReviewForm = lazy(() =>
-  import("@/components/review-form").then((m) => ({
-    default: m.ReviewForm,
   }))
 );
 
@@ -127,8 +120,6 @@ const Index = () => {
   const [selectedBathroom, setSelectedBathroom] = useState<Bathroom | null>(
     null
   );
-  const [showReviewForm, setShowReviewForm] = useState(false);
-  const [reviewBathroom, setReviewBathroom] = useState<string>("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedBathroomDetails, setSelectedBathroomDetails] =
     useState<Bathroom | null>(null);
@@ -147,7 +138,6 @@ const Index = () => {
   const [pendingReviewBathroomId, setPendingReviewBathroomId] =
     useState<string>("");
   const [selectedBuilding, setSelectedBuilding] = useState<string>("");
-  const [selectedFloor, setSelectedFloor] = useState<string>("");
   const aboutRef = useRef<HTMLDivElement | null>(null);
   const [aboutVisible, setAboutVisible] = useState(false);
   const reviewsRef = useRef<HTMLDivElement | null>(null);
@@ -326,9 +316,8 @@ const Index = () => {
   // Respect user setting to hide distance when off campus
   const showOffCampusDistance = settings.showDistanceOffCampus;
 
-  // Get buildings and floors from hook
+  // Get buildings from hook
   const buildings = getBuildings();
-  const floorsForBuilding = getFloors();
 
   const bathroomsForPicker = useMemo(
     () =>
@@ -336,10 +325,9 @@ const Index = () => {
         .filter((b) =>
           selectedBuilding ? b.building === selectedBuilding : true
         )
-        .filter((b) => (selectedFloor ? b.floor === selectedFloor : true))
         .slice()
         .sort((a, b) => a.name.localeCompare(b.name)),
-    [bathroomData, selectedBuilding, selectedFloor]
+    [bathroomData, selectedBuilding]
   );
 
   // Filter bathrooms based on search (name, building, or floor)
@@ -533,20 +521,12 @@ const Index = () => {
     updateFilters({
       query: searchQuery,
       building: selectedBuilding,
-      floor: selectedFloor,
     });
-  }, [searchQuery, selectedBuilding, selectedFloor, updateFilters]);
-
-  const handleReviewBathroom = (bathroomName: string) => {
-    setReviewBathroom(bathroomName);
-    setShowReviewForm(true);
-  };
+  }, [searchQuery, selectedBuilding, updateFilters]);
 
   const handleViewBathroomDetails = (bathroom: Bathroom) => {
     setSelectedBathroomDetails(bathroom);
   };
-
-  const { toast } = useToast();
 
   const handleReviewSubmit = async (
     bathroomId: string,
@@ -560,26 +540,8 @@ const Index = () => {
       paper_available?: boolean;
     }
   ) => {
-    try {
-      await addReview(bathroomId, reviewData);
-      // Success is handled by the bathroom-details modal
-    } catch (error) {
-      console.error("Error submitting review:", error);
-      if (error instanceof Error && error.message === "ALREADY_REVIEWED") {
-        toast({
-          title: "Review já submetida",
-          description:
-            "Já submeteste uma avaliação para esta casa de banho. Só é permitida uma avaliação por dispositivo.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Erro ao submeter review",
-          description: "Ocorreu um erro inesperado. Tenta novamente.",
-          variant: "destructive",
-        });
-      }
-    }
+    // Let errors bubble up to BathroomDetails, which shows the correct modal
+    await addReview(bathroomId, reviewData);
   };
 
   const handleBathroomSelect = (bathroom: Bathroom | null) => {
@@ -995,14 +957,13 @@ const Index = () => {
               Ajude outros estudantes a encontrar as melhores casas de banho do
               campus IST! A sua avaliação faz a diferença 🚀
             </p>
-            {/* Guided selection: Edifício → Piso → Casa de banho */}
-            <div className="max-w-xl mx-auto mb-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {/* Guided selection: Edifício → Casa de banho */}
+            <div className="max-w-xl mx-auto mb-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
               {/* Building */}
               <Select
                 value={selectedBuilding}
                 onValueChange={(val) => {
                   setSelectedBuilding(val);
-                  setSelectedFloor("");
                   setPendingReviewBathroomId("");
                 }}
               >
@@ -1015,30 +976,6 @@ const Index = () => {
                     {buildings.map((b) => (
                       <SelectItem key={b} value={b}>
                         {b}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-
-              {/* Floor */}
-              <Select
-                value={selectedFloor}
-                onValueChange={(val) => {
-                  setSelectedFloor(val);
-                  setPendingReviewBathroomId("");
-                }}
-                disabled={!selectedBuilding}
-              >
-                <SelectTrigger className="w-full bg-white/80 dark:bg-gray-800/80">
-                  <SelectValue placeholder="Piso" />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
-                  <SelectGroup>
-                    <SelectLabel>Pisos</SelectLabel>
-                    {floorsForBuilding.map((f) => (
-                      <SelectItem key={f} value={f}>
-                        {f}
                       </SelectItem>
                     ))}
                   </SelectGroup>
@@ -1059,7 +996,7 @@ const Index = () => {
                     <SelectLabel>Casas de banho</SelectLabel>
                     {bathroomsForPicker.map((b) => (
                       <SelectItem key={b.id} value={b.id}>
-                        {b.name}
+                        {b.name} • {b.floor}
                       </SelectItem>
                     ))}
                   </SelectGroup>
@@ -1086,15 +1023,23 @@ const Index = () => {
                 );
                 if (chosen) {
                   setSelectedBathroomDetails(chosen);
-                  // scroll to the review form after the modal opens
+                  // Wait for modal to open, then scroll to review form
                   setTimeout(() => {
-                    const el = document.getElementById("review-form");
-                    el?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }, 350);
-                } else if (selectedBathroomDetails) {
-                  // Already open; just try to scroll
-                  const el = document.getElementById("review-form");
-                  el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    // Find the modal content and scroll to review form
+                    const modalContent = document.querySelector(
+                      "[data-radix-dialog-content]"
+                    );
+                    if (modalContent) {
+                      const reviewForm =
+                        modalContent.querySelector("#review-form");
+                      if (reviewForm) {
+                        reviewForm.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start",
+                        });
+                      }
+                    }
+                  }, 500);
                 } else {
                   // Encourage using the map directly
                   scrollToMap();
@@ -1660,18 +1605,6 @@ const Index = () => {
             </div>
           </div>
         </div>
-
-        {/* Review Form Modal */}
-        {showReviewForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
-            <div className="w-full max-w-md">
-              <ReviewForm
-                bathroomName={reviewBathroom}
-                onClose={() => setShowReviewForm(false)}
-              />
-            </div>
-          </div>
-        )}
 
         {/* Bathroom Details Modal */}
         {selectedBathroomDetails && (

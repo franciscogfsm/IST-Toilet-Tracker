@@ -154,10 +154,9 @@ function CompactBathroomFilters({
   };
 
   const clearFilters = () => {
-    setSelectedFloor(null);
+    setSelectedFloor(defaultFloor);
     setSelectedBuilding(null);
     setShowAccessibleOnly(false);
-    onFilterChange(allBathrooms);
   };
 
   // Apply filters whenever any filter OR the base dataset changes
@@ -177,7 +176,9 @@ function CompactBathroomFilters({
   }, [allBathrooms, defaultFloor, selectedFloor]);
 
   const hasActiveFilters =
-    selectedFloor || selectedBuilding || showAccessibleOnly;
+    (selectedFloor && selectedFloor !== defaultFloor) ||
+    selectedBuilding ||
+    showAccessibleOnly;
 
   return (
     <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl p-3 shadow-md">

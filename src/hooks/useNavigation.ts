@@ -7,7 +7,6 @@ export function useNavigation() {
   const [navState, setNavState] = useState<NavigationState>({
     activeTab: "map",
     showMenu: false,
-    showReviewForm: false,
     selectedBathroomDetails: null,
   });
 
@@ -90,10 +89,6 @@ export function useNavigation() {
     setNavState((prev) => ({ ...prev, showMenu: !prev.showMenu }));
   };
 
-  const setShowReviewForm = (show: boolean) => {
-    setNavState((prev) => ({ ...prev, showReviewForm: show }));
-  };
-
   const setSelectedBathroomDetails = (bathroom: any) => {
     setNavState((prev) => ({ ...prev, selectedBathroomDetails: bathroom }));
   };
@@ -103,7 +98,6 @@ export function useNavigation() {
     scrollToSection,
     setActiveTab,
     toggleMenu,
-    setShowReviewForm,
     setSelectedBathroomDetails,
   };
 }

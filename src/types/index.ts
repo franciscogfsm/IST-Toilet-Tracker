@@ -58,6 +58,5 @@ export interface AppSettings {
 export interface NavigationState {
   activeTab: "map" | "reviews" | "stats";
   showMenu: boolean;
-  showReviewForm: boolean;
   selectedBathroomDetails: Bathroom | null;
 }

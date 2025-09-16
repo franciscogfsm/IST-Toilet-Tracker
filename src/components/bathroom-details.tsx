@@ -71,12 +71,25 @@ export function BathroomDetails({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const submissionInProgressRef = useRef(false);
+
+  // Reset modal states when component unmounts or bathroom changes
+  useEffect(() => {
+    return () => {
+      setShowSuccessModal(false);
+      setShowDuplicateModal(false);
+    };
+  }, [bathroom?.id]);
 
   if (!bathroom) return null;
 
   const handleSubmitReview = async () => {
+    // Reset all modal states first
+    setShowSuccessModal(false);
+    setShowDuplicateModal(false);
+
     if (cleanlinessRating === 0 || privacyRating === 0) {
       alert("Por favor, avalie a limpeza e privacidade.");
       return;
@@ -135,9 +148,15 @@ export function BathroomDetails({
 
       // Handle specific error cases
       if (error.message === "ALREADY_REVIEWED") {
-        alert(
-          "Já submeteu uma avaliação para esta casa de banho recentemente. Tente novamente mais tarde."
-        );
+        setShowDuplicateModal(true);
+        // Auto-close duplicate modal after 2 seconds like success modal
+        setTimeout(() => {
+          setShowDuplicateModal(false);
+          // Close main modal shortly after
+          setTimeout(() => {
+            onClose();
+          }, 200);
+        }, 2000);
       } else {
         alert("Erro ao enviar avaliação. Tente novamente.");
       }
@@ -617,7 +636,7 @@ export function BathroomDetails({
                   <div className="space-y-2">
                     <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
                       <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                      <span className="truncate">Papel higiênico?</span>
+                      <span className="truncate">Papel higiénico?</span>
                     </label>
                     <div className="flex gap-1 p-1 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                       <button
@@ -648,7 +667,7 @@ export function BathroomDetails({
                   <div className="space-y-2">
                     <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
                       <UserIcon className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                      <span className="truncate">Seu nome</span>
+                      <span className="truncate">Nome</span>
                     </label>
                     <input
                       type="text"
@@ -825,6 +844,40 @@ export function BathroomDetails({
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 overflow-hidden">
               <div className="bg-gradient-to-r from-purple-500 to-pink-600 h-1 rounded-full animate-in slide-in-from-left-full duration-2000"></div>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Duplicate Review Modal */}
+      <Dialog
+        open={showDuplicateModal}
+        onOpenChange={(open) => {
+          setShowDuplicateModal(open);
+          if (!open) onClose();
+        }}
+      >
+        <DialogContent className="p-0 w-[90vw] max-w-[400px] max-h-[300px] flex flex-col bg-background/95 supports-[backdrop-filter]:backdrop-blur-md border border-border/60 shadow-2xl rounded-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Avaliação Já Enviada</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-600 rounded-full flex items-center justify-center shadow-lg animate-in zoom-in-50 duration-500 delay-100">
+              <X className="h-8 w-8 text-white animate-in zoom-in-75 duration-300 delay-200" />
+            </div>
+
+            <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                Avaliação já enviada
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Já submeteste uma avaliação para esta casa de banho hoje.
+              </p>
+              <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">
+                Só é permitida uma avaliação por dia por dispositivo.
+              </p>
+            </div>
+
+            {/* Auto-closes; no manual button needed to avoid clipping */}
           </div>
         </DialogContent>
       </Dialog>
