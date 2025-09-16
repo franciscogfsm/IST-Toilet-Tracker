@@ -32,6 +32,8 @@ import { Separator } from "@/components/ui/separator";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Toggle } from "@/components/ui/toggle";
 import { Bathroom, Review } from "@/types";
+import { DeviceFingerprint } from "@/lib/deviceFingerprint";
+import { BathroomService } from "@/services/bathroomService";
 
 interface BathroomDetailsProps {
   bathroom: Bathroom | null;
@@ -49,6 +51,7 @@ interface BathroomDetailsProps {
       paper_available?: boolean;
     }
   ) => void;
+  onBathroomUpdate?: (updatedBathroom: Bathroom) => void;
 }
 
 export function BathroomDetails({
@@ -56,6 +59,7 @@ export function BathroomDetails({
   isOpen,
   onClose,
   onReviewSubmit,
+  onBathroomUpdate,
 }: BathroomDetailsProps) {
   // Hint to guide users to scroll for the review form
   const [showScrollHint, setShowScrollHint] = useState(true);
@@ -74,12 +78,21 @@ export function BathroomDetails({
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const submissionInProgressRef = useRef(false);
+  const [editingReview, setEditingReview] = useState<Review | null>(null);
+  const [editComment, setEditComment] = useState("");
+  const [editReviewerName, setEditReviewerName] = useState("");
+  const [editPaperAvailable, setEditPaperAvailable] = useState<boolean>(true);
+  const [editCleanlinessRating, setEditCleanlinessRating] = useState(0);
+  const [editPrivacyRating, setEditPrivacyRating] = useState(0);
+  const [showEditSuccessModal, setShowEditSuccessModal] = useState(false);
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
 
   // Reset modal states when component unmounts or bathroom changes
   useEffect(() => {
     return () => {
       setShowSuccessModal(false);
       setShowDuplicateModal(false);
+      setShowEditSuccessModal(false);
     };
   }, [bathroom?.id]);
 
@@ -179,6 +192,7 @@ export function BathroomDetails({
       // Reset all submission-related state when main modal closes
       setShowSuccessModal(false);
       setIsSubmittingReview(false);
+      setShowEditSuccessModal(false);
       submissionInProgressRef.current = false;
 
       // Remove any inline styles that might have been added
@@ -200,12 +214,93 @@ export function BathroomDetails({
     }
   }, [isOpen]);
 
+  const handleEditReview = (review: Review) => {
+    setEditingReview(review);
+    setEditComment(review.comment || "");
+    setEditReviewerName(review.user_name || "");
+    setEditPaperAvailable(review.paper_available !== false); // Default to true if undefined
+    setEditCleanlinessRating(review.cleanliness);
+    setEditPrivacyRating(review.privacy);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingReview(null);
+    setEditComment("");
+    setEditReviewerName("");
+    setEditPaperAvailable(true);
+    setEditCleanlinessRating(0);
+    setEditPrivacyRating(0);
+  };
+
+  const handleUpdateReview = async () => {
+    if (!editingReview) return;
+
+    setIsSubmittingEdit(true);
+    try {
+      const updatedReview = {
+        user_name: editReviewerName || "Anónimo",
+        comment: editComment,
+        cleanliness: editCleanlinessRating,
+        privacy: editPrivacyRating,
+        paper_available: editPaperAvailable,
+        rating: Math.round((editCleanlinessRating + editPrivacyRating) / 2),
+        date: editingReview.date, // Keep original date
+        paper_supply: editPaperAvailable ? 5 : 1, // Convert boolean to supply level
+      };
+
+      await BathroomService.updateReview(
+        editingReview.id,
+        bathroom.id,
+        updatedReview
+      );
+
+      // Update the review in the local state
+      const updatedBathroom = {
+        ...bathroom,
+        reviews:
+          bathroom.reviews?.map((review) =>
+            review.id === editingReview.id
+              ? { ...review, ...updatedReview }
+              : review
+          ) || [],
+      };
+
+      // Notify parent component of the update
+      if (onBathroomUpdate) {
+        onBathroomUpdate(updatedBathroom);
+      }
+
+      // Update the bathroom data (you might need to pass this up to parent component)
+      // For now, we'll just close the modal and show success
+      setEditingReview(null);
+      setShowEditSuccessModal(true);
+
+      // Reset form
+      setEditComment("");
+      setEditReviewerName("");
+      setEditPaperAvailable(true);
+      setEditCleanlinessRating(0);
+      setEditPrivacyRating(0);
+
+      // Auto-close success modal after 2 seconds
+      setTimeout(() => {
+        setShowEditSuccessModal(false);
+      }, 2000);
+    } catch (error) {
+      console.error("Error updating review:", error);
+      // You could add error state here
+      alert("Erro ao atualizar avaliação. Tente novamente.");
+    } finally {
+      setIsSubmittingEdit(false);
+    }
+  };
+
+  // Prevent touch event conflicts with Leaflet
   const handleScroll: React.UIEventHandler<HTMLDivElement> = (e) => {
     const target = e.currentTarget;
     if (target.scrollTop > 10 && showScrollHint) setShowScrollHint(false);
   };
 
-  // Prevent touch event conflicts with Leaflet
   const handleTouchStart = (e: React.TouchEvent) => {
     // Allow normal touch behavior in the modal
     e.stopPropagation();
@@ -542,37 +637,66 @@ export function BathroomDetails({
                     {(showAllReviews
                       ? bathroom.reviews
                       : bathroom.reviews.slice(0, 2)
-                    ).map((review) => (
-                      <Card
-                        key={review.id}
-                        className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-start gap-2">
-                          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
-                            <UserIcon className="h-3 w-3 text-white" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-1">
-                              <p className="font-medium text-sm text-gray-900 dark:text-white truncate">
-                                {review.user_name}
+                    ).map((review) => {
+                      const isOwnReview = DeviceFingerprint.isOwnReview(
+                        review.id
+                      );
+                      return (
+                        <Card
+                          key={review.id}
+                          className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex items-start gap-2">
+                            <div className="h-7 w-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                              <UserIcon className="h-3 w-3 text-white" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-1">
+                                <p className="font-medium text-sm text-gray-900 dark:text-white truncate">
+                                  {review.user_name}
+                                </p>
+                                <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    {review.date}
+                                  </span>
+                                  {isOwnReview && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                                      onClick={() => handleEditReview(review)}
+                                    >
+                                      <svg
+                                        className="h-3 w-3"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                        />
+                                      </svg>
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 mb-1">
+                                {renderStars(review.rating)}
+                                <span className="text-xs text-gray-600 dark:text-gray-400">
+                                  {review.rating}/5
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words line-clamp-2">
+                                {review.comment}
                               </p>
-                              <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 flex-shrink-0">
-                                {review.date}
-                              </span>
                             </div>
-                            <div className="flex items-center gap-1 mb-1">
-                              {renderStars(review.rating)}
-                              <span className="text-xs text-gray-600 dark:text-gray-400">
-                                {review.rating}/5
-                              </span>
-                            </div>
-                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words line-clamp-2">
-                              {review.comment}
-                            </p>
                           </div>
-                        </div>
-                      </Card>
-                    ))}
+                        </Card>
+                      );
+                    })}
                     {bathroom.reviews.length > 2 && (
                       <div className="text-center pt-1">
                         <Button
@@ -848,36 +972,255 @@ export function BathroomDetails({
         </DialogContent>
       </Dialog>
 
-      {/* Duplicate Review Modal */}
+      {/* Edit Success Modal */}
       <Dialog
-        open={showDuplicateModal}
-        onOpenChange={(open) => {
-          setShowDuplicateModal(open);
-          if (!open) onClose();
-        }}
+        open={showEditSuccessModal}
+        onOpenChange={setShowEditSuccessModal}
       >
         <DialogContent className="p-0 w-[90vw] max-w-[400px] max-h-[300px] flex flex-col bg-background/95 supports-[backdrop-filter]:backdrop-blur-md border border-border/60 shadow-2xl rounded-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
           <DialogHeader className="sr-only">
-            <DialogTitle>Avaliação Já Enviada</DialogTitle>
+            <DialogTitle>Avaliação Atualizada com Sucesso</DialogTitle>
           </DialogHeader>
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-600 rounded-full flex items-center justify-center shadow-lg animate-in zoom-in-50 duration-500 delay-100">
-              <X className="h-8 w-8 text-white animate-in zoom-in-75 duration-300 delay-200" />
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-600 rounded-full flex items-center justify-center shadow-lg animate-in zoom-in-50 duration-500 delay-100">
+              <Check className="h-8 w-8 text-white animate-in zoom-in-75 duration-300 delay-200" />
             </div>
 
             <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300">
               <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                Avaliação já enviada
+                Avaliação atualizada! ✨
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Já submeteste uma avaliação para esta casa de banho hoje.
+                Obrigado por manter as informações atualizadas!
               </p>
-              <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">
-                Só é permitida uma avaliação por dia por dispositivo.
+              <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                Suas alterações foram salvas com sucesso
               </p>
             </div>
 
-            {/* Auto-closes; no manual button needed to avoid clipping */}
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-500 to-purple-600 h-1 rounded-full animate-in slide-in-from-left-full duration-2000"></div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Review Modal */}
+      <Dialog
+        open={!!editingReview}
+        onOpenChange={(open) => !open && handleCancelEdit()}
+      >
+        <DialogContent className="p-0 w-[92vw] max-w-[480px] max-h-[85vh] sm:w-[70vw] sm:max-w-lg sm:max-h-[80vh] flex flex-col bg-background/95 supports-[backdrop-filter]:backdrop-blur-md border border-border/60 shadow-2xl rounded-xl overflow-hidden overflow-x-hidden">
+          <DialogHeader className="px-4 py-4 sm:px-6 border-b border-border/60">
+            <DialogTitle className="flex items-center gap-2">
+              <svg
+                className="h-5 w-5 text-blue-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+              <span className="text-lg font-bold">Editar Avaliação</span>
+            </DialogTitle>
+            <DialogDescription>
+              Atualize sua avaliação para {bathroom.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
+            <div className="space-y-4">
+              {/* Quick Actions */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    <span className="truncate">Papel higiénico?</span>
+                  </label>
+                  <div className="flex gap-1 p-1 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <button
+                      onClick={() => setEditPaperAvailable(true)}
+                      className={`flex-1 flex items-center justify-center gap-1 py-2 px-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                        editPaperAvailable
+                          ? "bg-emerald-500 text-white shadow-sm"
+                          : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      }`}
+                    >
+                      <Check className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">Sim</span>
+                    </button>
+                    <button
+                      onClick={() => setEditPaperAvailable(false)}
+                      className={`flex-1 flex items-center justify-center gap-1 py-2 px-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                        !editPaperAvailable
+                          ? "bg-rose-500 text-white shadow-sm"
+                          : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      }`}
+                    >
+                      <X className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">Não</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    <UserIcon className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                    <span className="truncate">Nome</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editReviewerName}
+                    onChange={(e) => setEditReviewerName(e.target.value)}
+                    placeholder="Anónimo"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/90 dark:bg-gray-800/90"
+                  />
+                </div>
+              </div>
+
+              {/* Detailed Ratings */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                  Avaliações específicas *
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
+                      <Star className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                      <span className="truncate">Limpeza</span>
+                    </label>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setEditCleanlinessRating(star)}
+                          className="focus:outline-none"
+                        >
+                          <Star
+                            className={`h-5 w-5 ${
+                              star <= editCleanlinessRating
+                                ? "fill-blue-400 text-blue-400"
+                                : "text-gray-300"
+                            }`}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
+                      <Star className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                      <span className="truncate">Privacidade</span>
+                    </label>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setEditPrivacyRating(star)}
+                          className="focus:outline-none"
+                        >
+                          <Star
+                            className={`h-5 w-5 ${
+                              star <= editPrivacyRating
+                                ? "fill-purple-400 text-purple-400"
+                                : "text-gray-300"
+                            }`}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {/* Show calculated rating */}
+                {editCleanlinessRating > 0 && editPrivacyRating > 0 && (
+                  <div className="mt-3 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20 rounded-lg border border-yellow-200/50 dark:border-yellow-800/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                        Classificação geral calculada:
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {renderStars(
+                          Math.round(
+                            (editCleanlinessRating + editPrivacyRating) / 2
+                          )
+                        )}
+                        <span className="text-sm font-bold text-purple-600 dark:text-purple-400">
+                          {Math.round(
+                            (editCleanlinessRating + editPrivacyRating) / 2
+                          )}
+                          /5
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Comment */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
+                  <MessageSquare className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                  <span className="truncate">Comentário</span>
+                </label>
+                <Textarea
+                  value={editComment}
+                  onChange={(e) => setEditComment(e.target.value)}
+                  placeholder="Ajude outros usuários..."
+                  className="w-full min-h-[60px] resize-none bg-white/90 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm rounded-lg"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="border-t border-border/60 px-4 py-4 sm:px-6 flex gap-3">
+            <Button
+              variant="outline"
+              onClick={handleCancelEdit}
+              className="flex-1"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleUpdateReview}
+              disabled={
+                isSubmittingEdit ||
+                editCleanlinessRating === 0 ||
+                editPrivacyRating === 0
+              }
+              className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
+            >
+              {isSubmittingEdit ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Atualizando...</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  <span>Atualizar</span>
+                </div>
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

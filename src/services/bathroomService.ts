@@ -411,7 +411,11 @@ export class BathroomService {
       date: new Date().toISOString().split("T")[0],
     };
 
-    const { error } = await supabase.from("reviews").insert(reviewData);
+    const { data, error } = await supabase
+      .from("reviews")
+      .insert(reviewData)
+      .select()
+      .single();
 
     if (error) {
       console.error("Error adding review:", error);
@@ -421,7 +425,39 @@ export class BathroomService {
     // Mark this device as having reviewed this bathroom
     DeviceFingerprint.markReviewedBathroom(bathroomId);
 
+    // Mark this review as belonging to this device
+    if (data?.id) {
+      DeviceFingerprint.markOwnReview(data.id);
+    }
+
     // Não precisamos mais atualizar estatísticas estáticas - elas são calculadas dinamicamente
+  }
+
+  static async updateReview(
+    reviewId: string,
+    bathroomId: string,
+    review: Omit<ReviewInsert, "bathroom_id">
+  ): Promise<void> {
+    // Check if this device owns this review
+    if (!DeviceFingerprint.isOwnReview(reviewId)) {
+      throw new Error("NOT_OWN_REVIEW");
+    }
+
+    const reviewData = {
+      ...review,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+      .from("reviews")
+      .update(reviewData)
+      .eq("id", reviewId)
+      .eq("bathroom_id", bathroomId);
+
+    if (error) {
+      console.error("Error updating review:", error);
+      throw error;
+    }
   }
 
   private static getCleanlinessLabel(avg: number): string {

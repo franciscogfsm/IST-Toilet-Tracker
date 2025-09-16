@@ -49,6 +49,10 @@ CREATE POLICY "Allow public read access on reviews" ON reviews
 CREATE POLICY "Allow public insert on reviews" ON reviews
   FOR INSERT WITH CHECK (true);
 
+-- Create policies for updating reviews (public can update their own reviews)
+CREATE POLICY "Allow public update on reviews" ON reviews
+  FOR UPDATE USING (true);
+
 -- Create policies for updating bathrooms (only for admin/service role)
 -- This would be restricted in production
 CREATE POLICY "Allow public update on bathrooms" ON bathrooms

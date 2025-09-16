@@ -128,6 +128,55 @@ export class DeviceFingerprint {
   }
 
   /**
+   * Check if a specific review belongs to this device
+   */
+  static isOwnReview(reviewId: string): boolean {
+    const fingerprint = this.getFingerprint();
+    const key = `${this.FINGERPRINT_KEY}_review_${reviewId}`;
+    const storedFingerprint = localStorage.getItem(key);
+
+    return storedFingerprint === fingerprint;
+  }
+
+  /**
+   * Mark a review as belonging to this device
+   */
+  static markOwnReview(reviewId: string): void {
+    const fingerprint = this.getFingerprint();
+    const key = `${this.FINGERPRINT_KEY}_review_${reviewId}`;
+    localStorage.setItem(key, fingerprint);
+  }
+
+  /**
+   * Get all review IDs that belong to this device for a specific bathroom
+   */
+  static getOwnReviewIdsForBathroom(bathroomId: string): string[] {
+    const fingerprint = this.getFingerprint();
+    const key = `${this.FINGERPRINT_KEY}_${bathroomId}`;
+    const reviewedDevices = JSON.parse(localStorage.getItem(key) || "[]");
+
+    if (!reviewedDevices.includes(fingerprint)) {
+      return [];
+    }
+
+    // Find all review keys for this bathroom that belong to this device
+    const reviewKeys = Object.keys(localStorage).filter((key) =>
+      key.startsWith(`${this.FINGERPRINT_KEY}_review_`)
+    );
+
+    const ownReviewIds: string[] = [];
+    reviewKeys.forEach((key) => {
+      const storedFingerprint = localStorage.getItem(key);
+      if (storedFingerprint === fingerprint) {
+        const reviewId = key.replace(`${this.FINGERPRINT_KEY}_review_`, "");
+        ownReviewIds.push(reviewId);
+      }
+    });
+
+    return ownReviewIds;
+  }
+
+  /**
    * Clear all review tracking for testing purposes
    */
   static clearAllReviewTracking(): void {

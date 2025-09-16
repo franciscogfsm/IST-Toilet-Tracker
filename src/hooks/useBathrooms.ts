@@ -114,6 +114,14 @@ export function useBathrooms() {
   const getBuildings = () => buildings;
   const getFloors = () => floors;
 
+  const updateBathroom = (updatedBathroom: Bathroom) => {
+    setBathrooms((prevBathrooms) =>
+      prevBathrooms.map((bathroom) =>
+        bathroom.id === updatedBathroom.id ? updatedBathroom : bathroom
+      )
+    );
+  };
+
   const updateFilters = (newFilters: Partial<SearchFilters>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
   };
@@ -124,6 +132,7 @@ export function useBathrooms() {
     filters,
     updateFilters,
     addReview,
+    updateBathroom,
     getBathroomById,
     getBuildings,
     getFloors,

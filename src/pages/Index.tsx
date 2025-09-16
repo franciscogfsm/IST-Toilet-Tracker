@@ -129,6 +129,7 @@ const Index = () => {
     filters,
     updateFilters,
     addReview,
+    updateBathroom,
     getBuildings,
     getFloors,
     statistics,
@@ -1616,6 +1617,10 @@ const Index = () => {
             isOpen={!!selectedBathroomDetails}
             onClose={() => setSelectedBathroomDetails(null)}
             onReviewSubmit={handleReviewSubmit}
+            onBathroomUpdate={(updatedBathroom) => {
+              setSelectedBathroomDetails(updatedBathroom);
+              updateBathroom(updatedBathroom);
+            }}
           />
         )}
 
