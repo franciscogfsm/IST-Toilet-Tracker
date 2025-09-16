@@ -15,6 +15,7 @@ import {
   EyeOff,
   User as UserIcon,
   Check,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -158,17 +159,21 @@ export function BathroomDetails({
       }, 2000);
     } catch (error: any) {
       console.error("Erro ao enviar avaliação:", error);
+      console.log("Error type:", typeof error);
+      console.log("Error message:", error?.message);
+      console.log("Error name:", error?.name);
 
       // Handle specific error cases
       if (error.message === "ALREADY_REVIEWED") {
+        console.log("ALREADY_REVIEWED error detected, showing duplicate modal");
         setShowDuplicateModal(true);
-        // Auto-close duplicate modal after 2 seconds like success modal
+        // Auto-close duplicate modal after 2 seconds (faster than before)
         setTimeout(() => {
           setShowDuplicateModal(false);
-          // Close main modal shortly after
+          // Close main modal after duplicate modal closes with shorter delay
           setTimeout(() => {
             onClose();
-          }, 200);
+          }, 200); // Faster transition
         }, 2000);
       } else {
         alert("Erro ao enviar avaliação. Tente novamente.");
@@ -944,7 +949,7 @@ export function BathroomDetails({
 
       {/* Success Modal */}
       <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
-        <DialogContent className="p-0 w-[90vw] max-w-[400px] max-h-[300px] flex flex-col bg-background/95 supports-[backdrop-filter]:backdrop-blur-md border border-border/60 shadow-2xl rounded-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <DialogContent className="p-0 w-[90vw] max-w-[400px] max-h-[85vh] flex flex-col bg-background/95 supports-[backdrop-filter]:backdrop-blur-md border border-border/60 shadow-2xl rounded-xl overflow-y-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
           <DialogHeader className="sr-only">
             <DialogTitle>Avaliação Enviada com Sucesso</DialogTitle>
           </DialogHeader>
@@ -977,7 +982,7 @@ export function BathroomDetails({
         open={showEditSuccessModal}
         onOpenChange={setShowEditSuccessModal}
       >
-        <DialogContent className="p-0 w-[90vw] max-w-[400px] max-h-[300px] flex flex-col bg-background/95 supports-[backdrop-filter]:backdrop-blur-md border border-border/60 shadow-2xl rounded-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <DialogContent className="p-0 w-[90vw] max-w-[400px] max-h-[85vh] flex flex-col bg-background/95 supports-[backdrop-filter]:backdrop-blur-md border border-border/60 shadow-2xl rounded-xl overflow-y-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
           <DialogHeader className="sr-only">
             <DialogTitle>Avaliação Atualizada com Sucesso</DialogTitle>
           </DialogHeader>
@@ -1221,6 +1226,36 @@ export function BathroomDetails({
                 </div>
               )}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Duplicate Review Modal */}
+      <Dialog open={showDuplicateModal} onOpenChange={setShowDuplicateModal}>
+        <DialogContent className="p-0 w-[90vw] max-w-[400px] max-h-[85vh] flex flex-col bg-background/95 supports-[backdrop-filter]:backdrop-blur-md border border-border/60 shadow-2xl rounded-xl overflow-y-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Avaliação Duplicada</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-600 rounded-full flex items-center justify-center shadow-lg animate-in zoom-in-50 duration-500 delay-100">
+              <AlertTriangle className="h-8 w-8 text-white animate-in zoom-in-75 duration-300 delay-200" />
+            </div>
+
+            <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                Avaliação já existe! ⚠️
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Você já avaliou esta casa de banho anteriormente.
+              </p>
+              <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">
+                Só é permitida uma avaliação por dispositivo
+              </p>
+            </div>
+
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 overflow-hidden">
+              <div className="bg-gradient-to-r from-orange-500 to-red-600 h-1 rounded-full animate-in slide-in-from-left-full duration-2000"></div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
