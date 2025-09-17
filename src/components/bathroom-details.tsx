@@ -12,6 +12,7 @@ import {
   Send,
   X,
   ChevronDown,
+  ChevronUp,
   EyeOff,
   User as UserIcon,
   Check,
@@ -77,6 +78,9 @@ export function BathroomDetails({
   const [privacyRating, setPrivacyRating] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(
+    new Set()
+  );
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
@@ -279,13 +283,16 @@ export function BathroomDetails({
     setEditPrivacyRating(review.privacy);
   };
 
-  const handleCancelEdit = () => {
-    setEditingReview(null);
-    setEditComment("");
-    setEditReviewerName("");
-    setEditPaperAvailable(true);
-    setEditCleanlinessRating(0);
-    setEditPrivacyRating(0);
+  const toggleCommentExpansion = (reviewId: string) => {
+    setExpandedComments((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(reviewId)) {
+        newSet.delete(reviewId);
+      } else {
+        newSet.add(reviewId);
+      }
+      return newSet;
+    });
   };
 
   const handleUpdateReview = async () => {
@@ -349,6 +356,15 @@ export function BathroomDetails({
     } finally {
       setIsSubmittingEdit(false);
     }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingReview(null);
+    setEditComment("");
+    setEditReviewerName("");
+    setEditPaperAvailable(true);
+    setEditCleanlinessRating(0);
+    setEditPrivacyRating(0);
   };
 
   // Prevent touch event conflicts with Leaflet
@@ -745,9 +761,41 @@ export function BathroomDetails({
                                   {review.rating}/5
                                 </span>
                               </div>
-                              <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words line-clamp-2">
-                                {review.comment}
-                              </p>
+
+                              {/* Expandable Comment */}
+                              {review.comment && review.comment.trim() && (
+                                <div className="space-y-1">
+                                  <p
+                                    className={`text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words ${
+                                      expandedComments.has(review.id)
+                                        ? ""
+                                        : "line-clamp-2"
+                                    }`}
+                                  >
+                                    {review.comment}
+                                  </p>
+                                  {review.comment.length > 100 && (
+                                    <button
+                                      onClick={() =>
+                                        toggleCommentExpansion(review.id)
+                                      }
+                                      className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
+                                    >
+                                      {expandedComments.has(review.id) ? (
+                                        <span className="flex items-center gap-1">
+                                          Ver menos
+                                          <ChevronUp className="h-3 w-3" />
+                                        </span>
+                                      ) : (
+                                        <span className="flex items-center gap-1">
+                                          Ver mais
+                                          <ChevronDown className="h-3 w-3" />
+                                        </span>
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </Card>
@@ -943,12 +991,27 @@ export function BathroomDetails({
                     <MessageSquare className="h-4 w-4 text-blue-500 flex-shrink-0" />
                     <span className="truncate">Comentário</span>
                   </label>
-                  <Textarea
-                    value={reviewComment}
-                    onChange={(e) => setReviewComment(e.target.value)}
-                    placeholder="Ajude outros usuários..."
-                    className="w-full min-h-[60px] resize-none bg-white/90 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm rounded-lg"
-                  />
+                  <div className="relative">
+                    <Textarea
+                      value={reviewComment}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value.length <= 500) {
+                          setReviewComment(value);
+                        }
+                      }}
+                      placeholder="Ajude outros usuários..."
+                      className="w-full min-h-[60px] resize-none bg-white/90 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm rounded-lg pr-16"
+                    />
+                    <div className="absolute bottom-2 right-2 text-xs text-gray-400 dark:text-gray-500">
+                      {reviewComment.length}/500
+                    </div>
+                  </div>
+                  {reviewComment.length > 450 && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                      ⚠️ Aproximando-se do limite de caracteres
+                    </p>
+                  )}
                 </div>
 
                 {/* Captcha */}
@@ -1235,12 +1298,27 @@ export function BathroomDetails({
                   <MessageSquare className="h-4 w-4 text-blue-500 flex-shrink-0" />
                   <span className="truncate">Comentário</span>
                 </label>
-                <Textarea
-                  value={editComment}
-                  onChange={(e) => setEditComment(e.target.value)}
-                  placeholder="Ajude outros usuários..."
-                  className="w-full min-h-[60px] resize-none bg-white/90 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm rounded-lg"
-                />
+                <div className="relative">
+                  <Textarea
+                    value={editComment}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value.length <= 500) {
+                        setEditComment(value);
+                      }
+                    }}
+                    placeholder="Ajude outros usuários..."
+                    className="w-full min-h-[60px] resize-none bg-white/90 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm rounded-lg pr-16"
+                  />
+                  <div className="absolute bottom-2 right-2 text-xs text-gray-400 dark:text-gray-500">
+                    {editComment.length}/500
+                  </div>
+                </div>
+                {editComment.length > 450 && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    ⚠️ Aproximando-se do limite de caracteres
+                  </p>
+                )}
               </div>
             </div>
           </div>
