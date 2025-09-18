@@ -1010,7 +1010,7 @@ const Index = () => {
 
             {/* Map pin hint */}
             <div className="text-xs text-muted-foreground mb-4">
-              Dica: mais rápido tocar num pin no mapa para avaliar —
+              Dica: É mais rápido tocares num pin no mapa para avaliar —
               <button
                 type="button"
                 onClick={scrollToMap}
@@ -1068,9 +1068,7 @@ const Index = () => {
                 <span className="absolute -inset-x-1 -top-1 h-[120%] bg-gradient-to-b from-white/10 to-transparent" />
               </span>
             </Button>
-            <p className="text-xs text-gray-500 dark:text-gray-500 mt-3">
-              Clique numa casa de banho no mapa para avaliar especificamente
-            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-500 mt-3"></p>
           </CardContent>
         </Card>
 
@@ -1356,12 +1354,12 @@ const Index = () => {
                         />
                       </div>
 
-                      {/* Mobile hint */}
-                      <div className="mt-2 md:hidden">
+                      {/* Mobile hint - REMOVED */}
+                      {/* <div className="mt-2 md:hidden">
                         <p className="text-[10px] text-purple-600/70 dark:text-purple-400/70 font-medium">
                           Toque para explorar →
                         </p>
-                      </div>
+                      </div> */}
                     </CardContent>
                   </Card>
 
@@ -1425,12 +1423,12 @@ const Index = () => {
                         ))}
                       </div>
 
-                      {/* Mobile hint */}
-                      <div className="mt-2 md:hidden">
+                      {/* Mobile hint - REMOVED */}
+                      {/* <div className="mt-2 md:hidden">
                         <p className="text-[10px] text-amber-600/70 dark:text-amber-400/70 font-medium">
                           Toque para explorar →
                         </p>
-                      </div>
+                      </div> */}
                     </CardContent>
                   </Card>
 
@@ -1496,12 +1494,12 @@ const Index = () => {
                         )}
                       </div>
 
-                      {/* Mobile hint */}
-                      <div className="mt-2 md:hidden">
+                      {/* Mobile hint - REMOVED */}
+                      {/* <div className="mt-2 md:hidden">
                         <p className="text-[10px] text-teal-600/70 dark:text-teal-400/70 font-medium">
                           Toque para explorar →
                         </p>
-                      </div>
+                      </div> */}
                     </CardContent>
                   </Card>
 
@@ -1575,12 +1573,12 @@ const Index = () => {
                         </div>
                       </div>
 
-                      {/* Mobile hint */}
-                      <div className="mt-2 md:hidden">
+                      {/* Mobile hint - REMOVED */}
+                      {/* <div className="mt-2 md:hidden">
                         <p className="text-[10px] text-green-600/70 dark:text-green-400/70 font-medium">
                           Toque para explorar →
                         </p>
-                      </div>
+                      </div> */}
                     </CardContent>
                   </Card>
                 </>

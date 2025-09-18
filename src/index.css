@@ -133,6 +133,28 @@ All colors MUST be HSL.
   }
 }
 
+/* Utilities */
+@layer utilities {
+  /* Hide native scrollbars but keep scrolling */
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE/Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    /* Chrome/Safari */
+    width: 0px;
+    height: 0px;
+    display: none;
+    background: transparent;
+  }
+  .no-scrollbar::-webkit-scrollbar-thumb {
+    background: transparent;
+  }
+  .no-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
 /* Prevent horizontal scroll leaks from any child */
 html,
 body,
