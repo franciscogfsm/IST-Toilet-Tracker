@@ -849,7 +849,7 @@ ${editableBathrooms
             <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/95 dark:bg-gray-900/95 border border-gray-200/60 dark:border-gray-700/60 shadow-xl">
               <span className="text-base">👆</span>
               <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-200">
-                Toque num pin para avaliar
+                Toque no mapa para avaliar
               </span>
               <button
                 className="text-xs px-2 py-1 rounded-md bg-blue-600 text-white hover:bg-blue-700"

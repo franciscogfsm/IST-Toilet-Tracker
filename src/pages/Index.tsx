@@ -731,7 +731,7 @@ const Index = () => {
         {/* Search Section - Minimalist & Modern */}
         <div className="relative mx-auto max-w-lg md:max-w-2xl lg:max-w-3xl">
           <SearchInput
-            placeholder="Buscar por nome, edifício ou piso..."
+            placeholder="Procurar por nome, edifício ou piso..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full"
@@ -955,11 +955,11 @@ const Index = () => {
               <Sparkles className="h-8 w-8 text-white" />
             </div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-              ✨ Partilhe a Sua Experiência
+              ✨ Partilha a Tua Experiência
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
-              Ajude outros estudantes a encontrar as melhores casas de banho do
-              campus IST! A sua avaliação faz a diferença 🚀
+              Ajuda outros estudantes a encontrar as melhores casas de banho do
+              campus IST! A tua avaliação faz a diferença 🚀
             </p>
             {/* Guided selection: Edifício → Casa de banho */}
             <div className="max-w-xl mx-auto mb-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1657,10 +1657,10 @@ const Index = () => {
                 " transition-all duration-700 delay-100"
               }
             >
-              Criámos o <span className="font-semibold">IST Toilet Finder</span>{" "}
+              Criei o <span className="font-semibold">IST Toilet Finder</span>{" "}
               para ajudar os alunos do Instituto Superior Técnico a encontrar as
               melhores casas de banho no campus. Aqui podes explorar o mapa, ver
-              avaliações reais de estudantes e partilhar a sua experiência para
+              avaliações reais de estudantes e partilhar a tua experiência para
               ajudar a comunidade.
             </p>
 
@@ -1704,7 +1704,7 @@ const Index = () => {
                 </div>
                 <div>
                   <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    Partilhe a sua experiência
+                    Partilha a tua experiência
                   </div>
                   <div className="text-xs text-muted-foreground">
                     Reviews anónimas e rápidas
