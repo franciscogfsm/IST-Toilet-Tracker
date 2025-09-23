@@ -378,39 +378,40 @@ export function Captcha({
   }
 
   return (
-    <Card className="p-4 border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20">
-      <CardHeader className="pb-2">
+    <Card className="p-3 border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20 w-full">
+      <CardHeader className="pb-2 px-0 pt-0">
         <CardTitle className="flex items-center gap-2 text-sm">
           <Shield className="h-4 w-4 text-orange-600" />
           Verificação de Segurança
           {isVerified && <CheckCircle className="h-4 w-4 text-green-600" />}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-2 px-0 pb-0">
         {challenge && (
           <>
-            <div className="text-sm font-medium text-gray-900 dark:text-white">
+            <div className="text-sm font-medium text-gray-900 dark:text-white leading-tight">
               {challenge.question}
             </div>
 
             {challenge.type === "pattern" && (
-              <div className="flex justify-center">
+              <div className="flex justify-center py-2">
                 <canvas
                   ref={canvasRef}
-                  width={200}
-                  height={100}
-                  className="border border-gray-300 rounded"
+                  width={180}
+                  height={80}
+                  className="border border-gray-300 rounded max-w-full h-auto"
+                  style={{ maxWidth: "100%", height: "auto" }}
                 />
               </div>
             )}
 
             {challenge.type === "color" && challenge.options && (
-              <div className="flex justify-center gap-2">
+              <div className="flex justify-center gap-1 py-1">
                 {challenge.options.map((colorHex, index) => (
                   <button
                     key={index}
                     onClick={() => handleColorSelect(colorHex)}
-                    className="w-12 h-12 rounded border-2 border-gray-300 hover:border-gray-500 transition-colors"
+                    className="w-10 h-10 rounded border-2 border-gray-300 hover:border-gray-500 transition-colors flex-shrink-0"
                     style={{ backgroundColor: colorHex }}
                     title={`Cor ${index + 1}`}
                   />
@@ -426,42 +427,42 @@ export function Captcha({
                   onChange={(e) => setUserAnswer(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
                   placeholder="Digite sua resposta"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="flex-1 px-2 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
                 <Button
                   onClick={handleSubmit}
                   disabled={!userAnswer.trim()}
                   size="sm"
+                  className="px-3 py-2 h-auto text-sm"
                 >
                   Verificar
                 </Button>
               </div>
             )}
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between text-xs">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleRefresh}
-                className="text-xs"
+                className="text-xs h-6 px-2"
               >
                 <RefreshCw className="h-3 w-3 mr-1" />
-                Novo desafio
+                Novo
               </Button>
 
               {attempts > 0 && (
-                <Badge variant="outline" className="text-xs">
-                  Tentativas: {attempts}
+                <Badge variant="outline" className="text-xs h-5">
+                  {attempts} tentativa{attempts > 1 ? "s" : ""}
                 </Badge>
               )}
             </div>
 
             {attempts >= 2 && (
               <div className="flex items-center gap-2 text-xs text-orange-600">
-                <AlertTriangle className="h-3 w-3" />
-                <span>
-                  Respostas incorretas detectadas. Complete o desafio para
-                  continuar.
+                <AlertTriangle className="h-3 w-3 flex-shrink-0" />
+                <span className="leading-tight">
+                  Complete o desafio para continuar.
                 </span>
               </div>
             )}
@@ -469,9 +470,9 @@ export function Captcha({
         )}
 
         {isVerified && (
-          <div className="flex items-center gap-2 text-sm text-green-600">
-            <CheckCircle className="h-4 w-4" />
-            <span>Verificação concluída!</span>
+          <div className="flex items-center gap-2 text-sm text-green-600 py-1">
+            <CheckCircle className="h-4 w-4 flex-shrink-0" />
+            <span className="font-medium">Verificação concluída!</span>
           </div>
         )}
       </CardContent>

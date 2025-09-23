@@ -10,6 +10,7 @@ interface BottomSheetProps {
   showCloseButton?: boolean;
   snapPoints?: number[];
   initialSnapPoint?: number;
+  animateCloseDown?: boolean;
 }
 
 export function BottomSheet({
@@ -21,6 +22,7 @@ export function BottomSheet({
   showCloseButton = true,
   snapPoints = [0.9, 0.5, 0.1],
   initialSnapPoint = 0,
+  animateCloseDown = false,
 }: BottomSheetProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [startY, setStartY] = useState(0);
@@ -33,6 +35,7 @@ export function BottomSheet({
   // Local mount/animation state for smooth enter/exit
   const [isRendering, setIsRendering] = useState(isOpen);
   const [isShown, setIsShown] = useState(false);
+  const [isClosingDown, setIsClosingDown] = useState(false);
 
   // Backdrop click
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -65,11 +68,26 @@ export function BottomSheet({
     }
   }, [isOpen]);
 
+  // Handle animateCloseDown prop
+  useEffect(() => {
+    if (animateCloseDown && isOpen) {
+      setIsClosingDown(true);
+      // Start the downward animation
+      const timeout = setTimeout(() => {
+        onClose();
+      }, 600); // Match the transition duration
+      return () => clearTimeout(timeout);
+    } else {
+      setIsClosingDown(false);
+    }
+  }, [animateCloseDown, isOpen, onClose]);
+
   // Reset when opening
   useEffect(() => {
     if (isOpen) {
       setCurrentY(0);
       setCurrentSnapPoint(initialSnapPoint);
+      setIsClosingDown(false);
     }
   }, [isOpen, initialSnapPoint]);
 
@@ -84,21 +102,41 @@ export function BottomSheet({
     if (!isHandleDrag || !isDragging) return;
     const y = e.touches[0].clientY;
     const diff = y - startY;
-    if (diff > 0) setCurrentY(diff);
+    // Allow smoother dragging - remove the diff > 0 restriction for more responsive feel
+    // But still prevent dragging up beyond the current position
+    const maxDragUp = -50; // Allow small upward drag for better feel
+    const constrainedDiff = Math.max(maxDragUp, diff);
+    setCurrentY(constrainedDiff);
   };
 
   const onHandleTouchEnd: React.TouchEventHandler<HTMLDivElement> = () => {
     if (!isHandleDrag) return;
     setIsHandleDrag(false);
     setIsDragging(false);
-    if (currentY > 100) onClose();
-    setCurrentY(0);
+    // Improved close threshold - close if dragged down more than 80px or if velocity suggests closing
+    if (currentY > 80) {
+      onClose();
+    } else {
+      // Smooth return animation
+      setCurrentY(0);
+    }
   };
 
   if (!isRendering) return null;
 
   const snapPoint = snapPoints[currentSnapPoint] || snapPoints[0];
-  const translateY = isDragging ? currentY : isShown ? 0 : window.innerHeight;
+  // Calculate translateY with improved logic
+  let translateY = 0;
+  if (isClosingDown) {
+    // Animate downward when closing due to modal auto-close
+    translateY = window.innerHeight;
+  } else if (isDragging) {
+    translateY = currentY;
+  } else if (isShown) {
+    translateY = 0;
+  } else {
+    translateY = window.innerHeight;
+  }
 
   return (
     <>
@@ -113,7 +151,7 @@ export function BottomSheet({
       <div
         ref={sheetRef}
         // IMPORTANT: make this a column flex container so .flex-1 works on content
-        className="fixed bottom-0 left-0 right-0 z-[100] bg-white dark:bg-gray-900 rounded-t-3xl shadow-2xl transition-[transform,_max-height,_height] duration-300 ease-out overflow-hidden flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-[100] bg-white dark:bg-gray-900 rounded-t-3xl shadow-2xl transition-[transform] duration-500 ease-out overflow-hidden flex flex-col"
         style={{
           transform: `translate3d(0, ${translateY}px, 0)`,
           maxHeight: `${snapPoint * 100}vh`,

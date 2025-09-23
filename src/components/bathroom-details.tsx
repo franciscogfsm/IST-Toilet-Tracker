@@ -113,6 +113,7 @@ export function BathroomDetails({
   const [captchaVerified, setCaptchaVerified] = useState(false);
   const [spamCheckResult, setSpamCheckResult] = useState(null);
   const [showSpamWarningModal, setShowSpamWarningModal] = useState(false);
+  const [animateBottomSheetClose, setAnimateBottomSheetClose] = useState(false);
 
   // Reset modal states when component unmounts or bathroom changes
   useEffect(() => {
@@ -124,8 +125,22 @@ export function BathroomDetails({
       setShowCaptcha(false);
       setCaptchaVerified(false);
       setSpamCheckResult(null);
+      setAnimateBottomSheetClose(false);
     };
   }, [bathroom?.id]);
+
+  // Handle BottomSheet auto-close animation when success modal closes
+  useEffect(() => {
+    if (!showSuccessModal && isMobile) {
+      // Success modal just closed, trigger BottomSheet close animation
+      setAnimateBottomSheetClose(true);
+      // Reset the animation state after the animation completes
+      const timeout = setTimeout(() => {
+        setAnimateBottomSheetClose(false);
+      }, 700); // Slightly longer than the transition duration
+      return () => clearTimeout(timeout);
+    }
+  }, [showSuccessModal, isMobile]);
 
   if (!bathroom) return null;
 
@@ -477,6 +492,7 @@ export function BathroomDetails({
           onClose={onClose}
           title={bathroom?.name || ""}
           subtitle={bathroom?.building || ""}
+          animateCloseDown={animateBottomSheetClose}
         >
           {/* Add styles to hide any Leaflet popups when modal is open */}
           {isOpen && (
@@ -1680,36 +1696,6 @@ export function BathroomDetails({
             </div>
           </DialogContent>
 
-          {/* Success Modal */}
-          <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
-            <DialogContent className="p-0 w-[90vw] max-w-[400px] max-h-[85vh] flex flex-col bg-background/95 supports-[backdrop-filter]:backdrop-blur-md border border-border/60 shadow-2xl rounded-xl overflow-y-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
-              <DialogHeader className="sr-only">
-                <DialogTitle>Avaliação Enviada com Sucesso</DialogTitle>
-              </DialogHeader>
-              <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center shadow-lg animate-in zoom-in-50 duration-500 delay-100">
-                  <Check className="h-8 w-8 text-white animate-in zoom-in-75 duration-300 delay-200" />
-                </div>
-
-                <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300">
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                    Avaliação enviada! 🎉
-                  </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Obrigado por ajudar a comunidade do IST!
-                  </p>
-                  <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
-                    Sua opinião faz toda a diferença ✨
-                  </p>
-                </div>
-
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 overflow-hidden">
-                  <div className="bg-gradient-to-r from-purple-500 to-pink-600 h-1 rounded-full animate-in slide-in-from-left-full duration-2000"></div>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-
           {/* Edit Success Modal */}
           <Dialog
             open={showEditSuccessModal}
@@ -1977,75 +1963,111 @@ export function BathroomDetails({
               </div>
             </DialogContent>
           </Dialog>
-
-          {/* Spam Warning Modal */}
-          <Dialog
-            open={showSpamWarningModal}
-            onOpenChange={setShowSpamWarningModal}
-          >
-            <DialogContent className="p-0 w-[90vw] max-w-[400px] max-h-[85vh] flex flex-col bg-background/95 supports-[backdrop-filter]:backdrop-blur-md border border-border/60 shadow-2xl rounded-xl overflow-y-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
-              <DialogHeader className="sr-only">
-                <DialogTitle>Aviso de Spam</DialogTitle>
-              </DialogHeader>
-              <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center shadow-lg animate-in zoom-in-50 duration-500 delay-100">
-                  <AlertTriangle className="h-8 w-8 text-white animate-in zoom-in-75 duration-300 delay-200" />
-                </div>
-
-                <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300">
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                    Atividade Suspeita Detectada 🚫
-                  </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {spamCheckResult?.reason ||
-                      "Sua atividade foi identificada como potencial spam."}
-                  </p>
-                  <p className="text-xs text-red-600 dark:text-red-400 font-medium">
-                    Por favor, aguarde antes de tentar novamente
-                  </p>
-                </div>
-
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 overflow-hidden">
-                  <div className="bg-gradient-to-r from-red-500 to-red-600 h-1 rounded-full animate-in slide-in-from-left-full duration-3000"></div>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* Duplicate Review Modal */}
-          <Dialog
-            open={showDuplicateModal}
-            onOpenChange={setShowDuplicateModal}
-          >
-            <DialogContent className="p-0 w-[90vw] max-w-[400px] max-h-[85vh] flex flex-col bg-background/95 supports-[backdrop-filter]:backdrop-blur-md border border-border/60 shadow-2xl rounded-xl overflow-y-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
-              <DialogHeader className="sr-only">
-                <DialogTitle>Avaliação Duplicada</DialogTitle>
-              </DialogHeader>
-              <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-600 rounded-full flex items-center justify-center shadow-lg animate-in zoom-in-50 duration-500 delay-100">
-                  <AlertTriangle className="h-8 w-8 text-white animate-in zoom-in-75 duration-300 delay-200" />
-                </div>
-
-                <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300">
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                    Avaliação já existe hoje! ⚠️
-                  </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Você já avaliou esta casa de banho hoje.
-                  </p>
-                  <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">
-                    Só é permitida uma avaliação por dispositivo por dia
-                  </p>
-                </div>
-
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 overflow-hidden">
-                  <div className="bg-gradient-to-r from-orange-500 to-red-600 h-1 rounded-full animate-in slide-in-from-left-full duration-2000"></div>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
         </Dialog>
       )}
+
+      {/* Success Modal */}
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent
+          className="p-0 w-[90vw] max-w-[400px] max-h-[85vh] flex flex-col bg-background/95 supports-[backdrop-filter]:backdrop-blur-md border border-border/60 shadow-2xl rounded-xl overflow-y-auto animate-in fade-in slide-in-from-bottom-4 duration-300"
+          style={{ zIndex: 9999999 }}
+        >
+          <DialogHeader className="sr-only">
+            <DialogTitle>Avaliação Enviada com Sucesso</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center shadow-lg animate-in zoom-in-50 duration-500 delay-100">
+              <Check className="h-8 w-8 text-white animate-in zoom-in-75 duration-300 delay-200" />
+            </div>
+
+            <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                Avaliação enviada! 🎉
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Obrigado por ajudar a comunidade do IST!
+              </p>
+              <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                Sua opinião faz toda a diferença ✨
+              </p>
+            </div>
+
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 overflow-hidden">
+              <div className="bg-gradient-to-r from-purple-500 to-pink-600 h-1 rounded-full animate-in slide-in-from-left-full duration-2000"></div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Spam Warning Modal */}
+      <Dialog
+        open={showSpamWarningModal}
+        onOpenChange={setShowSpamWarningModal}
+      >
+        <DialogContent
+          className="p-0 w-[90vw] max-w-[400px] max-h-[85vh] flex flex-col bg-background/95 supports-[backdrop-filter]:backdrop-blur-md border border-border/60 shadow-2xl rounded-xl overflow-y-auto animate-in fade-in slide-in-from-bottom-4 duration-300"
+          style={{ zIndex: 9999999 }}
+        >
+          <DialogHeader className="sr-only">
+            <DialogTitle>Aviso de Spam</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center shadow-lg animate-in zoom-in-50 duration-500 delay-100">
+              <AlertTriangle className="h-8 w-8 text-white animate-in zoom-in-75 duration-300 delay-200" />
+            </div>
+
+            <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                Atividade Suspeita Detectada 🚫
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {spamCheckResult?.reason ||
+                  "Sua atividade foi identificada como potencial spam."}
+              </p>
+              <p className="text-xs text-red-600 dark:text-red-400 font-medium">
+                Por favor, aguarde antes de tentar novamente
+              </p>
+            </div>
+
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 overflow-hidden">
+              <div className="bg-gradient-to-r from-red-500 to-red-600 h-1 rounded-full animate-in slide-in-from-left-full duration-3000"></div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Duplicate Review Modal */}
+      <Dialog open={showDuplicateModal} onOpenChange={setShowDuplicateModal}>
+        <DialogContent
+          className="p-0 w-[90vw] max-w-[400px] max-h-[85vh] flex flex-col bg-background/95 supports-[backdrop-filter]:backdrop-blur-md border border-border/60 shadow-2xl rounded-xl overflow-y-auto animate-in fade-in slide-in-from-bottom-4 duration-300"
+          style={{ zIndex: 9999999 }}
+        >
+          <DialogHeader className="sr-only">
+            <DialogTitle>Avaliação Duplicada</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-600 rounded-full flex items-center justify-center shadow-lg animate-in zoom-in-50 duration-500 delay-100">
+              <AlertTriangle className="h-8 w-8 text-white animate-in zoom-in-75 duration-300 delay-200" />
+            </div>
+
+            <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                Avaliação já existe hoje! ⚠️
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Você já avaliou esta casa de banho hoje.
+              </p>
+              <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">
+                Só é permitida uma avaliação por dispositivo por dia
+              </p>
+            </div>
+
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 overflow-hidden">
+              <div className="bg-gradient-to-r from-orange-500 to-red-600 h-1 rounded-full animate-in slide-in-from-left-full duration-2000"></div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
