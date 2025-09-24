@@ -275,17 +275,53 @@ export function BathroomDetails({
     }
   };
 
-  // Hide the scroll hint faster with a smooth fade-out
+  // Reset / show the scroll hint every time the sheet opens (mobile only)
   useEffect(() => {
-    if (!showScrollHint) return;
-    const t1 = setTimeout(() => setIsHidingHint(true), 900);
-    const t2 = setTimeout(() => setShowScrollHint(false), 1200);
+    if (isOpen && isMobile) {
+      // Re-show the hint when opening a different WC or re-opening
+      setShowScrollHint(true);
+      setIsHidingHint(false);
+    }
+  }, [isOpen, isMobile, bathroom?.id]);
+
+  // Hide the scroll hint with a smooth fade-out, only once sheet is actually open on mobile
+  useEffect(() => {
+    if (!showScrollHint) return; // already hidden
+    if (!isOpen || !isMobile) return; // don't start timers until visible context
+
+    // Extended visibility so user can read it a bit longer
+    const startFadeAfter = 3000; // ms
+    const removeAfter = 3500; // ms
+    const t1 = setTimeout(() => setIsHidingHint(true), startFadeAfter); // start fade
+    const t2 = setTimeout(() => {
+      setShowScrollHint(false);
+      setIsHidingHint(false); // ensure no residual space
+    }, removeAfter);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
-      setIsHidingHint(false);
     };
-  }, [showScrollHint]);
+  }, [showScrollHint, isOpen, isMobile]);
+
+  // Mobile: fade out hint immediately when user actually scrolls the sheet content
+  useEffect(() => {
+    if (!isMobile || !isOpen) return;
+    if (!showScrollHint) return;
+    const contentEl = document.querySelector(".bottom-sheet-content");
+    if (!contentEl) return;
+    const onScroll = () => {
+      if (!showScrollHint) return;
+      if ((contentEl as HTMLElement).scrollTop > 8) {
+        setIsHidingHint(true);
+        setTimeout(() => {
+          setShowScrollHint(false);
+          setIsHidingHint(false);
+        }, 320);
+      }
+    };
+    contentEl.addEventListener("scroll", onScroll, { passive: true });
+    return () => contentEl.removeEventListener("scroll", onScroll);
+  }, [isMobile, isOpen, showScrollHint]);
 
   // Clean up Leaflet styles when modal closes
   useEffect(() => {
@@ -415,7 +451,13 @@ export function BathroomDetails({
   // Prevent touch event conflicts with Leaflet
   const handleScroll: React.UIEventHandler<HTMLDivElement> = (e) => {
     const target = e.currentTarget;
-    if (target.scrollTop > 10 && showScrollHint) setShowScrollHint(false);
+    if (target.scrollTop > 10 && showScrollHint) {
+      setIsHidingHint(true);
+      setTimeout(() => {
+        setShowScrollHint(false);
+        setIsHidingHint(false);
+      }, 350);
+    }
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -515,36 +557,42 @@ export function BathroomDetails({
 
           {/* Content directly in BottomSheet (sheet provides scroll) */}
           <div className="space-y-4 pb-4 h-full">
-            <div
-              className={`sticky top-2 z-20 flex justify-center mb-4 transition-opacity duration-300 ease-out ${
-                showScrollHint && !isHidingHint ? "opacity-100" : "opacity-0"
-              }`}
-            >
-              <div className="group inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-foreground/90 bg-white/90 dark:bg-gray-800/90 supports-[backdrop-filter]:backdrop-blur-md ring-1 ring-gray-200/50 dark:ring-gray-700/50 shadow-md hover:bg-white dark:hover:bg-gray-800 transition-all duration-200">
-                <ChevronDown
-                  className="h-4 w-4 text-blue-500 group-hover:translate-y-0.5 transition-transform animate-bounce"
-                  aria-hidden
-                />
-                <span className="whitespace-nowrap font-medium">
-                  Desça para avaliar
-                </span>
-                <button
-                  className="ml-2 inline-flex items-center rounded-lg px-2 py-1 text-xs font-semibold text-white bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-sm"
-                  onClick={() => {
-                    const el = document.getElementById("review-form");
-                    el?.scrollIntoView({
-                      behavior: "smooth",
-                      block: "start",
-                    });
-                    setIsHidingHint(true);
-                    setTimeout(() => setShowScrollHint(false), 250);
-                  }}
-                  aria-label="Avaliar"
-                >
-                  Avaliar
-                </button>
+            {(showScrollHint || (isHidingHint && isOpen)) && (
+              <div
+                className={`sticky top-2 z-20 flex justify-center mb-4 transition-opacity duration-400 ease-out ${
+                  showScrollHint && !isHidingHint ? "opacity-100" : "opacity-0"
+                }`}
+              >
+                <div className="group inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-foreground/90 bg-white/90 dark:bg-gray-800/90 supports-[backdrop-filter]:backdrop-blur-md ring-1 ring-gray-200/50 dark:ring-gray-700/50 shadow-md hover:bg-white dark:hover:bg-gray-800 transition-all duration-200">
+                  <ChevronDown
+                    className="h-4 w-4 text-blue-500 group-hover:translate-y-0.5 transition-transform animate-bounce"
+                    aria-hidden
+                  />
+                  <span className="whitespace-nowrap font-medium">
+                    Desça para avaliar
+                  </span>
+                  <button
+                    className="ml-2 inline-flex items-center rounded-lg px-2 py-1 text-xs font-semibold text-white bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-sm"
+                    onClick={() => {
+                      const el = document.getElementById("review-form");
+                      el?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      });
+                      // Immediate hide when user taps
+                      setIsHidingHint(true);
+                      setTimeout(() => {
+                        setShowScrollHint(false);
+                        setIsHidingHint(false);
+                      }, 240);
+                    }}
+                    aria-label="Avaliar"
+                  >
+                    Avaliar
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Basic Info */}
             <div className="grid grid-cols-1 gap-4">

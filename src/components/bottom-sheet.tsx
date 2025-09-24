@@ -42,42 +42,66 @@ export function BottomSheet({
     if (e.target === e.currentTarget) onClose();
   };
 
-  // Body lock: only set overflow hidden (avoid position: fixed which can break iOS inner-scroll)
+  // Animation constants
+  const OPEN_DURATION = 260;
+  const NORMAL_CLOSE_DURATION = 260;
+  const CLOSE_DOWN_DURATION = 420;
+  const OPEN_EASING = "cubic-bezier(0.25,0.9,0.30,1)";
+  const CLOSE_EASING = "cubic-bezier(0.33,1,0.68,1)";
+  const CLOSE_DOWN_EASING = "cubic-bezier(0.16,1,0.3,1)";
+
+  // Body lock + mount/unmount with timing aware cleanup
   useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    let rAF: number | null = null;
     if (isOpen) {
-      // Prepare to render and animate in
       setIsRendering(true);
-      // Lock body scroll
-      scrollYRef.current = window.scrollY || window.pageYOffset || 0;
-      document.body.style.overflow = "hidden";
-      document.documentElement.style.overflow = "hidden";
-      // Ensure we start from offscreen then animate to 0 in next frame
+      if (document.body.style.overflow !== "hidden") {
+        scrollYRef.current = window.scrollY || window.pageYOffset || 0;
+        document.body.style.overflow = "hidden";
+        document.documentElement.style.overflow = "hidden";
+      }
       setIsShown(false);
-      const rAF = requestAnimationFrame(() => setIsShown(true));
-      return () => cancelAnimationFrame(rAF);
+      rAF = requestAnimationFrame(() => setIsShown(true));
     } else {
-      // Animate out then unmount after duration
       setIsShown(false);
-      const timeout = setTimeout(() => {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+      const exitDuration = isClosingDown
+        ? CLOSE_DOWN_DURATION
+        : NORMAL_CLOSE_DURATION;
+      timeout = setTimeout(() => {
         setIsRendering(false);
+        if (scrollYRef.current) window.scrollTo(0, scrollYRef.current);
+      }, exitDuration);
+    }
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      if (rAF) cancelAnimationFrame(rAF);
+      if (!isOpen) {
         document.body.style.overflow = "";
         document.documentElement.style.overflow = "";
-        if (scrollYRef.current) window.scrollTo(0, scrollYRef.current);
-      }, 300);
-      return () => clearTimeout(timeout);
-    }
-  }, [isOpen]);
+      }
+    };
+  }, [isOpen, isClosingDown]);
 
-  // Handle animateCloseDown prop
+  // Extra safety: on unmount always restore scroll (covers navigation away)
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    };
+  }, []);
+
+  // Smooth downward auto-close coordination
   useEffect(() => {
     if (animateCloseDown && isOpen) {
       setIsClosingDown(true);
-      // Start the downward animation
-      const timeout = setTimeout(() => {
+      const t = setTimeout(() => {
         onClose();
-      }, 600); // Match the transition duration
-      return () => clearTimeout(timeout);
-    } else {
+      }, CLOSE_DOWN_DURATION + 20);
+      return () => clearTimeout(t);
+    } else if (!animateCloseDown) {
       setIsClosingDown(false);
     }
   }, [animateCloseDown, isOpen, onClose]);
@@ -97,18 +121,14 @@ export function BottomSheet({
     setStartY(e.touches[0].clientY);
     setIsDragging(true);
   };
-
   const onHandleTouchMove: React.TouchEventHandler<HTMLDivElement> = (e) => {
     if (!isHandleDrag || !isDragging) return;
     const y = e.touches[0].clientY;
     const diff = y - startY;
-    // Allow smoother dragging - remove the diff > 0 restriction for more responsive feel
-    // But still prevent dragging up beyond the current position
-    const maxDragUp = -50; // Allow small upward drag for better feel
+    const maxDragUp = -50;
     const constrainedDiff = Math.max(maxDragUp, diff);
     setCurrentY(constrainedDiff);
   };
-
   const onHandleTouchEnd: React.TouchEventHandler<HTMLDivElement> = () => {
     if (!isHandleDrag) return;
     setIsHandleDrag(false);
@@ -150,13 +170,18 @@ export function BottomSheet({
       {/* Bottom Sheet */}
       <div
         ref={sheetRef}
-        // IMPORTANT: make this a column flex container so .flex-1 works on content
-        className="fixed bottom-0 left-0 right-0 z-[100] bg-white dark:bg-gray-900 rounded-t-3xl shadow-2xl transition-[transform] duration-500 ease-out overflow-hidden flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-[100] bg-white dark:bg-gray-900 rounded-t-3xl shadow-2xl overflow-hidden flex flex-col"
         style={{
           transform: `translate3d(0, ${translateY}px, 0)`,
           maxHeight: `${snapPoint * 100}vh`,
           height: `${snapPoint * 100}vh`,
           willChange: "transform",
+          transition:
+            isShown || isClosingDown
+              ? `transform ${
+                  isClosingDown ? CLOSE_DOWN_DURATION : OPEN_DURATION
+                }ms ${isClosingDown ? CLOSE_DOWN_EASING : OPEN_EASING}`
+              : undefined,
         }}
       >
         {/* Handle */}
