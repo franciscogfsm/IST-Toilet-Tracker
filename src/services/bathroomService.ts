@@ -551,4 +551,29 @@ export class BathroomService {
       mostCommonCleanliness,
     };
   }
+
+  static async getRecentReviews(limit: number = 10) {
+    const { data, error } = await supabase
+      .from("reviews")
+      .select(
+        `
+        *,
+        bathrooms (
+          id,
+          name,
+          building,
+          floor
+        )
+      `
+      )
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error("Error fetching recent reviews:", error);
+      throw error;
+    }
+
+    return data || [];
+  }
 }

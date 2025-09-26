@@ -12,6 +12,7 @@ export function useBathrooms() {
     buildingsCount: number;
     mostCommonCleanliness: string;
   } | null>(null);
+  const [recentReviews, setRecentReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<SearchFilters>({
@@ -28,18 +29,20 @@ export function useBathrooms() {
         setLoading(true);
         setError(null);
 
-        const [allBathrooms, uniqueBuildings, uniqueFloors, stats] =
+        const [allBathrooms, uniqueBuildings, uniqueFloors, stats, recent] =
           await Promise.all([
             BathroomService.getAllBathrooms(),
             BathroomService.getUniqueBuildings(),
             BathroomService.getUniqueFloors(),
             BathroomService.getStatistics(),
+            BathroomService.getRecentReviews(10),
           ]);
 
         setBathrooms(allBathrooms);
         setBuildings(uniqueBuildings);
         setFloors(uniqueFloors);
         setStatistics(stats);
+        setRecentReviews(recent);
       } catch (err) {
         console.error("Error loading bathrooms:", err);
         setError("Erro ao carregar dados dos banheiros");
@@ -137,6 +140,7 @@ export function useBathrooms() {
     getBuildings,
     getFloors,
     statistics,
+    recentReviews,
     loading,
     error,
   };

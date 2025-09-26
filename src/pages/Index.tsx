@@ -29,6 +29,7 @@ import { BathroomCard } from "@/components/bathroom-card";
 import { MapWithFilters } from "@/components/map-with-filters";
 import { QuickStats } from "@/components/quick-stats";
 import { BathroomDetails } from "@/components/bathroom-details";
+import { RecentReviews } from "@/components/recent-reviews";
 import { SidebarMenu } from "@/components/sidebar-menu";
 import { useBathrooms } from "@/hooks/useBathrooms";
 import { Bathroom, Review } from "@/types";
@@ -133,6 +134,7 @@ const Index = () => {
     getBuildings,
     getFloors,
     statistics,
+    recentReviews,
     loading: bathroomsLoading,
     error: bathroomsError,
   } = useBathrooms();
@@ -939,6 +941,27 @@ const Index = () => {
             )}
           </div>
         )}
+
+        {/* Recent Reviews Section */}
+        <div className="space-y-2 sm:space-y-3 lg:space-y-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center shadow-md">
+              <MessageCircle className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+            </div>
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
+              Avaliações Recentes
+            </h2>
+          </div>
+          <RecentReviews
+            reviews={recentReviews}
+            onBathroomClick={(bathroomId) => {
+              const bathroom = bathroomData.find((b) => b.id === bathroomId);
+              if (bathroom) {
+                setSelectedBathroomDetails(bathroom);
+              }
+            }}
+          />
+        </div>
 
         {/* Enhanced Review Button */}
         <Card
