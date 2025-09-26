@@ -790,15 +790,12 @@ export function BathroomDetails({
                                 {/* Expandable Comment */}
                                 {review.comment && review.comment.trim() && (
                                   <div className="space-y-1">
-                                    <p
-                                      className={`text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words ${
-                                        expandedComments.has(review.id)
-                                          ? ""
-                                          : "line-clamp-2"
-                                      }`}
-                                    >
-                                      {review.comment}
-                                    </p>
+                                    {expandedComments.has(review.id) ||
+                                    review.comment.length <= 100 ? (
+                                      <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words">
+                                        {review.comment}
+                                      </p>
+                                    ) : null}
                                     {review.comment.length > 100 && (
                                       <button
                                         onClick={() =>
@@ -1436,15 +1433,12 @@ export function BathroomDetails({
                                   {/* Expandable Comment */}
                                   {review.comment && review.comment.trim() && (
                                     <div className="space-y-1">
-                                      <p
-                                        className={`text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words ${
-                                          expandedComments.has(review.id)
-                                            ? ""
-                                            : "line-clamp-2"
-                                        }`}
-                                      >
-                                        {review.comment}
-                                      </p>
+                                      {expandedComments.has(review.id) ||
+                                      review.comment.length <= 100 ? (
+                                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words">
+                                          {review.comment}
+                                        </p>
+                                      ) : null}
                                       {review.comment.length > 100 && (
                                         <button
                                           onClick={() =>
