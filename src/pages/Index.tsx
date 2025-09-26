@@ -587,6 +587,7 @@ const Index = () => {
     const headerOffset = HEADER_OFFSET;
     const sectionIds: Array<[string, "map" | "reviews" | "stats"]> = [
       ["map", "map"],
+      ["reviews", "reviews"],
       ["review-form", "reviews"],
       ["stats", "stats"],
     ];
@@ -1076,15 +1077,7 @@ const Index = () => {
               {/* Leading icon kept inside bounds */}
               <span className="pointer-events-none inline-flex items-center gap-2">
                 <Star className="h-5 w-5" />
-                <span>
-                  {pendingReviewBathroomId
-                    ? `Avaliar ${
-                        bathroomData.find(
-                          (b) => b.id === pendingReviewBathroomId
-                        )?.name || "Casa de Banho"
-                      }`
-                    : "Avaliar Casa de Banho"}
-                </span>
+                <span>Avaliar casa de banho</span>
               </span>
               {/* Subtle sheen */}
               <span className="pointer-events-none absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-300">

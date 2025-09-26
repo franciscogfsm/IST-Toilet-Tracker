@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import { X } from "lucide-react";
 
 interface BottomSheetProps {
@@ -36,11 +42,16 @@ export function BottomSheet({
   const [isRendering, setIsRendering] = useState(isOpen);
   const [isShown, setIsShown] = useState(false);
   const [isClosingDown, setIsClosingDown] = useState(false);
+  const animationFrameRef = useRef<number | null>(null);
+  const dragYRef = useRef(0);
 
   // Backdrop click
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) onClose();
-  };
+  const handleBackdropClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.target === e.currentTarget) onClose();
+    },
+    [onClose]
+  );
 
   // Animation constants
   const OPEN_DURATION = 260;
@@ -116,44 +127,63 @@ export function BottomSheet({
   }, [isOpen, initialSnapPoint]);
 
   // Handle/header touch handlers (drag-to-close only from handle/header)
-  const onHandleTouchStart: React.TouchEventHandler<HTMLDivElement> = (e) => {
-    setIsHandleDrag(true);
-    setStartY(e.touches[0].clientY);
-    setIsDragging(true);
-  };
-  const onHandleTouchMove: React.TouchEventHandler<HTMLDivElement> = (e) => {
-    if (!isHandleDrag || !isDragging) return;
-    const y = e.touches[0].clientY;
-    const diff = y - startY;
-    const maxDragUp = -50;
-    const constrainedDiff = Math.max(maxDragUp, diff);
-    setCurrentY(constrainedDiff);
-  };
-  const onHandleTouchEnd: React.TouchEventHandler<HTMLDivElement> = () => {
-    if (!isHandleDrag) return;
-    setIsHandleDrag(false);
-    setIsDragging(false);
-    // Improved close threshold - close if dragged down more than 80px or if velocity suggests closing
-    if (currentY > 80) {
-      onClose();
-    } else {
-      // Smooth return animation
-      setCurrentY(0);
-    }
-  };
+  const onHandleTouchStart: React.TouchEventHandler<HTMLDivElement> =
+    useCallback((e) => {
+      setIsHandleDrag(true);
+      setStartY(e.touches[0].clientY);
+      setIsDragging(true);
+    }, []);
+
+  const onHandleTouchMove: React.TouchEventHandler<HTMLDivElement> =
+    useCallback(
+      (e) => {
+        if (!isHandleDrag || !isDragging) return;
+        const y = e.touches[0].clientY;
+        const diff = y - startY;
+        const maxDragUp = -50;
+        const constrainedDiff = Math.max(maxDragUp, diff);
+        dragYRef.current = constrainedDiff;
+
+        if (animationFrameRef.current === null) {
+          animationFrameRef.current = requestAnimationFrame(() => {
+            setCurrentY(dragYRef.current);
+            animationFrameRef.current = null;
+          });
+        }
+      },
+      [isHandleDrag, isDragging, startY]
+    );
+
+  const onHandleTouchEnd: React.TouchEventHandler<HTMLDivElement> =
+    useCallback(() => {
+      if (!isHandleDrag) return;
+      setIsHandleDrag(false);
+      setIsDragging(false);
+      // Improved close threshold - close if dragged down more than 80px or if velocity suggests closing
+      if (currentY > 80) {
+        onClose();
+      } else {
+        // Smooth return animation
+        setCurrentY(0);
+      }
+    }, [isHandleDrag, currentY, onClose]);
 
   if (!isRendering) return null;
 
   const snapPoint = snapPoints[currentSnapPoint] || snapPoints[0];
   // Calculate translateY with improved logic
+  const baseTranslateY = useMemo(
+    () => (1 - snapPoint) * window.innerHeight,
+    [snapPoint]
+  );
   let translateY = 0;
   if (isClosingDown) {
     // Animate downward when closing due to modal auto-close
     translateY = window.innerHeight;
   } else if (isDragging) {
-    translateY = currentY;
+    translateY = baseTranslateY + currentY;
   } else if (isShown) {
-    translateY = 0;
+    translateY = baseTranslateY;
   } else {
     translateY = window.innerHeight;
   }
@@ -164,17 +194,23 @@ export function BottomSheet({
       <div
         className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[90] transition-opacity duration-300"
         onClick={handleBackdropClick}
-        style={{ opacity: isShown ? 1 : 0 }}
+        style={{
+          opacity: isShown ? 1 : 0,
+          pointerEvents: isShown ? "auto" : "none",
+          top: -1,
+          right: -1,
+          bottom: -1,
+          left: -1,
+        }}
       />
 
       {/* Bottom Sheet */}
       <div
         ref={sheetRef}
-        className="fixed bottom-0 left-0 right-0 z-[100] bg-white dark:bg-gray-900 rounded-t-3xl shadow-2xl overflow-hidden flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-[100] bg-white dark:bg-gray-900 bg-clip-padding rounded-t-3xl border-t border-white dark:border-gray-900 shadow-2xl overflow-hidden flex flex-col"
         style={{
-          transform: `translate3d(0, ${translateY}px, 0)`,
-          maxHeight: `${snapPoint * 100}vh`,
-          height: `${snapPoint * 100}vh`,
+          transform: `translate3d(0, ${Math.round(translateY)}px, 0)`,
+          height: "100vh",
           willChange: "transform",
           transition:
             isShown || isClosingDown
