@@ -154,7 +154,7 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
     visible: {
       opacity: 1,
       scale: 1,
-      transition: { duration: 0.36, ease: "easeOut" },
+      transition: { duration: 0.36 },
     },
   };
 
@@ -326,16 +326,25 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
         ))}
       </motion.div>
 
-      <div className="flex justify-center gap-3 mt-6 sm:hidden">
+      {/* Modern dot indicators */}
+      <div className="flex justify-center gap-3 mt-1 sm:hidden">
         {items.map((_, index) => (
           <button
             key={index}
-            className={`w-3 h-3 rounded-full transition-all duration-300 ${
+            className={`w-2 h-2 rounded-full transition-all duration-300 ${
               index === activeIndex
                 ? "bg-gradient-to-r from-blue-500 to-purple-500 shadow-lg scale-125"
                 : "bg-gray-300 hover:bg-gray-400"
             }`}
-            onClick={() => scrollToIndex(index, "smooth")}
+            onClick={() => {
+              if (scrollRef.current) {
+                const el = scrollRef.current;
+                const cardWidth = 288 + 24;
+                const centerOffset = Math.max((el.clientWidth - 288) / 2, 0);
+                const left = index * cardWidth - centerOffset;
+                el.scrollTo({ left, behavior: "smooth" });
+              }
+            }}
             aria-label={`Go to review ${index + 1}`}
           />
         ))}
