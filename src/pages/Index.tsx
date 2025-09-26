@@ -587,7 +587,7 @@ const Index = () => {
     const headerOffset = HEADER_OFFSET;
     const sectionIds: Array<[string, "map" | "reviews" | "stats"]> = [
       ["map", "map"],
-      ["reviews", "reviews"],
+      ["review-form", "reviews"],
       ["stats", "stats"],
     ];
 
@@ -673,7 +673,7 @@ const Index = () => {
                   Mapa
                 </button>
                 <button
-                  onClick={() => scrollToSection("reviews", "reviews")}
+                  onClick={() => scrollToSection("review-form", "reviews")}
                   className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                     activeTopTab === "reviews"
                       ? "text-white bg-gradient-to-r from-blue-500 to-cyan-500 shadow-sm"
@@ -943,7 +943,7 @@ const Index = () => {
         )}
 
         {/* Recent Reviews Section */}
-        <div className="space-y-2 sm:space-y-3 lg:space-y-4">
+        <div className="space-y-2 sm:space-y-3 lg:space-y-4" id="reviews">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center shadow-md">
               <MessageCircle className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
@@ -965,7 +965,7 @@ const Index = () => {
 
         {/* Enhanced Review Button */}
         <Card
-          id="reviews"
+          id="review-form"
           ref={reviewsRef}
           className={`border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-blue-50/80 to-cyan-100/60 dark:from-blue-950/20 dark:to-cyan-900/10 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] scroll-mt-24 ${
             reviewsVisible
