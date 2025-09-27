@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   Star,
   MapPin,
@@ -66,24 +66,13 @@ export function BathroomDetails({
   onReviewSubmit,
   onBathroomUpdate,
 }: BathroomDetailsProps) {
-  // Detect if mobile
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
+  // Detect if mobile - memoize to avoid recalculation
+  const isMobile = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth < 768;
   }, []);
-  // Hint to guide users to scroll for the review form
-  const [showScrollHint, setShowScrollHint] = useState(true);
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-  // anchors to enable smooth scrolling inside the modal content
-  const reviewsAnchorId = "all-reviews";
-  const formAnchorId = "review-form";
+
+  // Only initialize form state when modal opens to reduce initial load
   const [reviewComment, setReviewComment] = useState("");
   const [reviewerName, setReviewerName] = useState("");
   const [paperAvailable, setPaperAvailable] = useState<boolean>(true);
@@ -98,7 +87,6 @@ export function BathroomDetails({
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const submissionInProgressRef = useRef(false);
-  const [isHidingHint, setIsHidingHint] = useState(false);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
   const [editComment, setEditComment] = useState("");
   const [editReviewerName, setEditReviewerName] = useState("");
@@ -108,12 +96,16 @@ export function BathroomDetails({
   const [showEditSuccessModal, setShowEditSuccessModal] = useState(false);
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
 
-  // Spam protection state
+  // Spam protection state - only initialize when needed
   const [showCaptcha, setShowCaptcha] = useState(false);
   const [captchaVerified, setCaptchaVerified] = useState(false);
   const [spamCheckResult, setSpamCheckResult] = useState(null);
   const [showSpamWarningModal, setShowSpamWarningModal] = useState(false);
   const [animateBottomSheetClose, setAnimateBottomSheetClose] = useState(false);
+
+  // Scroll hint state - only initialize on mobile
+  const [showScrollHint, setShowScrollHint] = useState(isMobile);
+  const [isHidingHint, setIsHidingHint] = useState(false);
 
   // Reset modal states when component unmounts or bathroom changes
   useEffect(() => {
@@ -556,7 +548,7 @@ export function BathroomDetails({
           )}
 
           {/* Content directly in BottomSheet (sheet provides scroll) */}
-          <div className="space-y-4 pb-4 h-full">
+          <div className="space-y-4 pb-4">
             {(showScrollHint || (isHidingHint && isOpen)) && (
               <div
                 className={`sticky top-2 z-20 flex justify-center mb-4 transition-opacity duration-400 ease-out ${
@@ -713,7 +705,7 @@ export function BathroomDetails({
             <Separator />
 
             {/* Reviews Section */}
-            <div id={reviewsAnchorId}>
+            <div id="reviews-section">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-semibold flex items-center gap-1.5 text-gray-900 dark:text-white">
                   <MessageSquare className="h-4 w-4 text-blue-500" />
@@ -866,7 +858,7 @@ export function BathroomDetails({
             <Separator />
 
             {/* Review Form */}
-            <div id={formAnchorId}>
+            <div id="review-form">
               <Card className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 border-purple-200/50 dark:border-purple-800/50">
                 <div className="text-center mb-4">
                   <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full mb-3">
@@ -1354,7 +1346,7 @@ export function BathroomDetails({
               <Separator />
 
               {/* Reviews Section */}
-              <div id={reviewsAnchorId}>
+              <div id="reviews-section">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-semibold flex items-center gap-1.5 text-gray-900 dark:text-white">
                     <MessageSquare className="h-4 w-4 text-blue-500" />
@@ -1509,7 +1501,7 @@ export function BathroomDetails({
               <Separator />
 
               {/* Review Form */}
-              <div id={formAnchorId}>
+              <div id="review-form">
                 <Card className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 border-purple-200/50 dark:border-purple-800/50">
                   <div className="text-center mb-4">
                     <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full mb-3">

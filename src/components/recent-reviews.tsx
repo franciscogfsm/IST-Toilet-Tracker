@@ -305,7 +305,7 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
               className="h-full"
             >
               <Card
-                className="relative h-full bg-gradient-to-br from-white via-blue-50/30 to-purple-50/20 shadow-md transition-all duration-300 cursor-pointer rounded-2xl border border-gray-200/60 overflow-hidden"
+                className="relative h-full bg-gradient-to-br from-white via-blue-50/30 to-purple-50/20 shadow-md transition-all duration-300 cursor-pointer rounded-2xl border border-gray-200/60 overflow-hidden active:scale-[0.98] active:transition-transform active:duration-75"
                 onClick={() => onBathroomClick?.(review.bathrooms.id)}
               >
                 <CardContent className="relative p-5 sm:p-6 h-full z-10">
@@ -320,15 +320,11 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
                           />
                         </motion.div>
                         <motion.h4
-                          className={`truncate transition-colors duration-300 cursor-pointer ${
+                          className={`truncate transition-colors duration-300 ${
                             compact
                               ? "text-base font-bold text-gray-900"
                               : "text-lg font-bold text-gray-900"
                           }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onBathroomClick?.(review.bathrooms.id);
-                          }}
                           transition={{ duration: 0.2 }}
                         >
                           {review.bathrooms.name}
