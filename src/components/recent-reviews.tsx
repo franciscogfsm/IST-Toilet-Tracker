@@ -70,8 +70,13 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
     return date.toLocaleDateString("pt-PT");
   };
 
-  // Only show last 5
-  const items = useMemo(() => reviews.slice(-5), [reviews]);
+  // Show fewer reviews on desktop (no horizontal scroll)
+  const items = useMemo(() => {
+    // Use a simple heuristic: if window width is available and >= 640px (sm breakpoint), show fewer reviews
+    const isDesktop = typeof window !== "undefined" && window.innerWidth >= 640;
+    const maxReviews = isDesktop ? 2 : 5;
+    return reviews.slice(-maxReviews);
+  }, [reviews]);
 
   // helper to compute widths and to scroll to a given index
   const scrollToIndex = (
@@ -169,18 +174,6 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
     visible: {
       scale: 1,
       rotate: 0,
-    },
-  };
-
-  const cardHoverVariants = {
-    hover: {
-      y: -8,
-      scale: 1.03,
-      rotateY: 2,
-    },
-    tap: {
-      scale: 0.97,
-      rotateY: -1,
     },
   };
 
@@ -301,12 +294,10 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
               ease: [0.25, 0.46, 0.45, 0.94],
               staggerChildren: 0.1,
             }}
-            whileHover="hover"
             whileTap="tap"
             className="review-card flex-shrink-0 w-72 sm:w-full snap-center h-full will-change-transform will-change-opacity"
           >
             <motion.div
-              variants={cardHoverVariants}
               transition={{
                 duration: 0.3,
                 ease: [0.25, 0.46, 0.45, 0.94],
@@ -314,40 +305,22 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
               className="h-full"
             >
               <Card
-                className="relative h-full bg-gradient-to-br from-white via-blue-50/30 to-purple-50/20 shadow-md hover:shadow-2xl transition-all duration-500 cursor-pointer rounded-2xl border border-gray-200/60 hover:border-blue-300/40 overflow-hidden group"
+                className="relative h-full bg-gradient-to-br from-white via-blue-50/30 to-purple-50/20 shadow-md transition-all duration-300 cursor-pointer rounded-2xl border border-gray-200/60 overflow-hidden"
                 onClick={() => onBathroomClick?.(review.bathrooms.id)}
               >
-                {/* Animated background gradient on hover */}
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                  initial={{ scale: 0.8 }}
-                  whileHover={{ scale: 1.1 }}
-                  transition={{ duration: 0.6 }}
-                />
-
-                {/* Subtle glow effect */}
-                <motion.div
-                  className="absolute -inset-1 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-2xl opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-500"
-                  initial={{ scale: 0.9 }}
-                  whileHover={{ scale: 1.05 }}
-                />
-
                 <CardContent className="relative p-5 sm:p-6 h-full z-10">
                   <div className="flex items-start gap-3 sm:gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 sm:gap-3 mb-3">
-                        <motion.div
-                          whileHover={{ scale: 1.2, rotate: 10 }}
-                          transition={{ duration: 0.2 }}
-                        >
+                        <motion.div transition={{ duration: 0.2 }}>
                           <MapPin
-                            className={`text-blue-500 flex-shrink-0 transition-colors duration-300 group-hover:text-blue-600 ${
+                            className={`text-blue-500 flex-shrink-0 transition-colors duration-300 ${
                               compact ? "h-3.5 w-3.5" : "h-5 w-5"
                             }`}
                           />
                         </motion.div>
                         <motion.h4
-                          className={`truncate hover:text-blue-600 transition-colors duration-300 cursor-pointer ${
+                          className={`truncate transition-colors duration-300 cursor-pointer ${
                             compact
                               ? "text-base font-bold text-gray-900"
                               : "text-lg font-bold text-gray-900"
@@ -356,19 +329,17 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
                             e.stopPropagation();
                             onBathroomClick?.(review.bathrooms.id);
                           }}
-                          whileHover={{ scale: 1.02 }}
                           transition={{ duration: 0.2 }}
                         >
                           {review.bathrooms.name}
                         </motion.h4>
                         <motion.div
                           className="ml-auto"
-                          whileHover={{ scale: 1.05 }}
                           transition={{ duration: 0.2 }}
                         >
                           <Badge
                             variant="secondary"
-                            className={`text-xs whitespace-nowrap bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border-blue-200 hover:from-blue-100 hover:to-purple-100 transition-all duration-300 ${
+                            className={`text-xs whitespace-nowrap bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border-blue-200 transition-all duration-300 ${
                               compact ? "px-2.5 py-1" : "px-3 py-1.5"
                             }`}
                           >
@@ -397,11 +368,6 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
                                   duration: 0.4,
                                   delay: i * 0.1,
                                   ease: "backOut",
-                                }}
-                                whileHover={{
-                                  scale: 1.2,
-                                  rotate: 10,
-                                  transition: { duration: 0.15 },
                                 }}
                               >
                                 <Star
@@ -457,11 +423,10 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
                             {review.comment.length > 150 && (
                               <motion.button
                                 type="button"
-                                className="text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors duration-200"
+                                className="text-xs font-medium text-blue-600 transition-colors duration-200"
                                 onClick={(e) =>
                                   toggleReviewExpansion(review.id, e)
                                 }
-                                whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 transition={{ duration: 0.15 }}
                               >
@@ -481,7 +446,6 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
                         >
                           <motion.span
                             className="font-medium truncate max-w-[120px] sm:max-w-none"
-                            whileHover={{ scale: 1.02 }}
                             transition={{ duration: 0.2 }}
                           >
                             {review.user_name}
@@ -489,7 +453,6 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
                           <span className="opacity-70">•</span>
                           <motion.div
                             className="flex items-center gap-1"
-                            whileHover={{ scale: 1.05 }}
                             transition={{ duration: 0.2 }}
                           >
                             <Clock
@@ -504,55 +467,6 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
                     </div>
                   </div>
                 </CardContent>
-
-                {/* Floating particles effect on hover */}
-                <motion.div
-                  className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                  initial={{ scale: 0 }}
-                  whileHover={{ scale: 1 }}
-                  transition={{ duration: 0.3, delay: 0.1 }}
-                >
-                  <div className="relative">
-                    <motion.div
-                      className="absolute w-1 h-1 bg-blue-400 rounded-full"
-                      animate={{
-                        y: [-4, -12, -4],
-                        opacity: [0.5, 1, 0.5],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      }}
-                    />
-                    <motion.div
-                      className="absolute w-1 h-1 bg-purple-400 rounded-full ml-2"
-                      animate={{
-                        y: [-4, -12, -4],
-                        opacity: [0.5, 1, 0.5],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                        delay: 0.5,
-                      }}
-                    />
-                    <motion.div
-                      className="absolute w-1 h-1 bg-pink-400 rounded-full ml-4"
-                      animate={{
-                        y: [-4, -12, -4],
-                        opacity: [0.5, 1, 0.5],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                        delay: 1,
-                      }}
-                    />
-                  </div>
-                </motion.div>
               </Card>
             </motion.div>
           </motion.div>
@@ -567,9 +481,9 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
         transition={{ duration: 0.5, delay: 0.8 }}
       >
         {items.map((_, index) => (
-          <motion.button
+          <button
             key={index}
-            className={`relative overflow-hidden rounded-full transition-all duration-500 ${
+            className={`rounded-full transition-all duration-200 ${
               index === activeIndex
                 ? "w-8 h-2 bg-gradient-to-r from-blue-500 to-purple-500 shadow-lg"
                 : "w-2 h-2 bg-gray-300 hover:bg-gray-400"
@@ -584,23 +498,7 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
               }
             }}
             aria-label={`Go to review ${index + 1}`}
-            whileHover={{ scale: 1.2 }}
-            whileTap={{ scale: 0.9 }}
-            transition={{ duration: 0.2 }}
-          >
-            {index === activeIndex && (
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400"
-                initial={{ x: "-100%" }}
-                animate={{ x: "100%" }}
-                transition={{
-                  duration: 1.5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              />
-            )}
-          </motion.button>
+          />
         ))}
       </motion.div>
     </div>
