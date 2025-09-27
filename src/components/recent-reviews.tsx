@@ -279,20 +279,19 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
       <motion.div
         ref={scrollRef}
         className="flex sm:flex-col flex-row items-stretch gap-6 overflow-x-auto sm:overflow-visible pb-5 sm:pb-0 no-scrollbar scroll-smooth snap-x snap-mandatory pl-6 pr-6 overscroll-x-contain"
-        variants={containerVariants}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.1, margin: "-50px" }}
       >
         {items.map((review, index) => (
           <motion.div
             key={review.id}
             data-index={index}
             variants={itemVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.3, margin: "-50px" }}
             transition={{
               duration: 0.6,
               ease: [0.25, 0.46, 0.45, 0.94],
-              staggerChildren: 0.1,
+              delay: index * 0.1,
             }}
             whileTap="tap"
             className="review-card flex-shrink-0 w-72 sm:w-full snap-center h-full will-change-transform will-change-opacity"
@@ -349,9 +348,13 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
                         <motion.div
                           className="flex items-center gap-2"
                           variants={starVariants}
+                          initial="hidden"
+                          whileInView="visible"
+                          viewport={{ once: true, amount: 0.5 }}
                           transition={{
                             duration: 0.4,
                             ease: [0.68, -0.55, 0.265, 1.55],
+                            delay: 0.2,
                           }}
                         >
                           <div className="flex items-center gap-1">
@@ -359,7 +362,8 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
                               <motion.div
                                 key={i}
                                 initial={{ scale: 0, rotate: -180 }}
-                                animate={{ scale: 1, rotate: 0 }}
+                                whileInView={{ scale: 1, rotate: 0 }}
+                                viewport={{ once: true, amount: 0.5 }}
                                 transition={{
                                   duration: 0.4,
                                   delay: i * 0.1,
@@ -383,7 +387,8 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
                               compact ? "text-sm" : "text-base"
                             }`}
                             initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true, amount: 0.5 }}
                             transition={{ duration: 0.4, delay: 0.6 }}
                           >
                             {review.rating}/5
@@ -394,7 +399,8 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
                           <motion.div
                             className="space-y-2"
                             initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
+                            whileInView={{ opacity: 1 }}
+                            viewport={{ once: true, amount: 0.5 }}
                             transition={{ duration: 0.4, delay: 0.8 }}
                           >
                             <motion.p
@@ -437,7 +443,8 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
                         <motion.div
                           className="flex items-center gap-2 text-xs text-gray-500"
                           initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true, amount: 0.5 }}
                           transition={{ duration: 0.4, delay: 1 }}
                         >
                           <motion.span
@@ -473,7 +480,8 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
       <motion.div
         className="flex justify-center gap-3 mt-1 sm:hidden"
         initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.5 }}
         transition={{ duration: 0.5, delay: 0.8 }}
       >
         {items.map((_, index) => (
