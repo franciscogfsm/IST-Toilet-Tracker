@@ -9,7 +9,6 @@ import {
   Locate,
   RotateCcw,
   Filter,
-  Edit3,
   Plus,
   Minus,
 } from "lucide-react";
@@ -18,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Bathroom } from "@/types";
 import { BathroomFilters } from "@/components/bathroom-filters";
-import { MapClickHandler, EditModeControls } from "@/components/map-editor";
+import { useToast } from "@/hooks/use-toast";
 import "leaflet/dist/leaflet.css";
 
 // IST Alameda coordinates
@@ -154,6 +153,7 @@ export function LeafletMap({
   filteredBathrooms,
   isModalOpen = false,
 }: LeafletMapProps) {
+  const { toast } = useToast();
   const [userLocation, setUserLocation] = useState<[number, number] | null>(
     null
   );
@@ -165,9 +165,6 @@ export function LeafletMap({
     Bathroom[]
   >([]);
   const [showFilters, setShowFilters] = useState(true); // Start with filters open by default
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [editableBathrooms, setEditableBathrooms] = useState<Bathroom[]>([]);
-  const [selectedEditBathroom, setSelectedEditBathroom] = useState<string>("");
   // Show a short hint telling users to tap a marker (persist once per device)
   const [showTouchHint, setShowTouchHint] = useState(false);
 
@@ -299,9 +296,7 @@ export function LeafletMap({
 
   // Get bathrooms with distances from user location
   const getBathroomsWithDistances = () => {
-    const bathroomsToUse = isEditMode
-      ? editableBathrooms
-      : filteredBathrooms || internalFilteredBathrooms;
+    const bathroomsToUse = filteredBathrooms || internalFilteredBathrooms;
     return bathroomsToUse
       .map((bathroom) => {
         const [lat, lng] = convertToRealCoords(bathroom.x, bathroom.y);
@@ -384,14 +379,9 @@ export function LeafletMap({
       } catch (_) {}
       setShowTouchHint(false);
     }
-    if (isEditMode) {
-      // In edit mode, select the bathroom for repositioning
-      setSelectedEditBathroom(bathroom.id);
-    } else {
-      // In normal mode, show bathroom details
-      setSelectedBathroom(bathroom.id);
-      onBathroomSelect?.(bathroom);
-    }
+    // In normal mode, show bathroom details
+    setSelectedBathroom(bathroom.id);
+    onBathroomSelect?.(bathroom);
   };
 
   const resetView = () => {
@@ -403,84 +393,6 @@ export function LeafletMap({
 
   const handleFilterChange = (filtered: Bathroom[]) => {
     setInternalFilteredBathrooms(filtered);
-  };
-
-  const handlePositionUpdate = (bathroomId: string, x: number, y: number) => {
-    setEditableBathrooms((prev) =>
-      prev.map((bathroom) =>
-        bathroom.id === bathroomId ? { ...bathroom, x, y } : bathroom
-      )
-    );
-
-    // Also update filtered bathrooms if they include this bathroom
-    setInternalFilteredBathrooms((prev) =>
-      prev.map((bathroom) =>
-        bathroom.id === bathroomId ? { ...bathroom, x, y } : bathroom
-      )
-    );
-  };
-
-  const toggleEditMode = () => {
-    setIsEditMode(!isEditMode);
-    if (!isEditMode) {
-      setShowFilters(false); // Close filters when entering edit mode
-    }
-  };
-
-  const savePositions = () => {
-    // Generate the complete bathrooms.ts file content
-    const bathroomsCode = `export interface Bathroom {
-  id: string;
-  name: string;
-  building: string;
-  floor: string;
-    accessibility: string;
-  x: number;
-  y: number;
-}
-
-export const bathrooms: Bathroom[] = [
-${editableBathrooms
-  .map(
-    (bathroom) =>
-      `  {
-    id: "${bathroom.id}",
-    name: "${bathroom.name}",
-    building: "${bathroom.building}",
-    floor: "${bathroom.floor}",
-    accessibility: "${bathroom.has_accessible}",
-    x: ${bathroom.x.toFixed(1)},
-    y: ${bathroom.y.toFixed(1)},
-  }`
-  )
-  .join(",\n")}
-];`;
-
-    // Try to copy to clipboard
-    navigator.clipboard
-      .writeText(bathroomsCode)
-      .then(() => {
-        alert(
-          `✅ Posições guardadas!\n\nO código foi copiado para a clipboard.\n\nCola-o em src/data/bathrooms.ts para guardar permanentemente.\n\nTotal: ${editableBathrooms.length} casas de banho atualizadas.`
-        );
-      })
-      .catch(() => {
-        // Fallback: download file
-        const blob = new Blob([bathroomsCode], { type: "text/typescript" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = "bathrooms.ts";
-        link.click();
-        URL.revokeObjectURL(url);
-
-        alert(
-          `Posições guardadas! O ficheiro 'bathrooms.ts' foi descarregado.\n\nSubstitua o ficheiro em src/data/bathrooms.ts\n\nTotal: ${editableBathrooms.length} casas de banho atualizadas.`
-        );
-      });
-
-    console.log("Updated bathroom positions:");
-    console.log(bathroomsCode);
   };
 
   return (
@@ -528,7 +440,6 @@ ${editableBathrooms
               variant="ghost"
               size="sm"
               onClick={() => setShowFilters(!showFilters)}
-              disabled={isEditMode}
               className={`w-8 h-8 p-0 rounded-lg touch-manipulation transition-all duration-200 ${
                 showFilters
                   ? "bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 dark:hover:bg-purple-900/50"
@@ -542,40 +453,9 @@ ${editableBathrooms
                 }`}
               />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleEditMode}
-              className={`w-8 h-8 p-0 rounded-lg touch-manipulation transition-all duration-200 ${
-                isEditMode
-                  ? "bg-orange-50 dark:bg-orange-950/50 hover:bg-orange-100 dark:hover:bg-orange-900/50"
-                  : "hover:bg-orange-50 dark:hover:bg-orange-950/50"
-              }`}
-              title="Editar"
-            >
-              <Edit3
-                className={`h-3.5 w-3.5 ${
-                  isEditMode ? "text-orange-600" : "text-gray-600"
-                }`}
-              />
-            </Button>
           </div>
         </div>
       </div>
-
-      {/* Edit Mode Panel */}
-      {isEditMode && (
-        <div className="absolute top-2 sm:top-4 left-12 sm:left-20 z-[1000] w-72 sm:w-80">
-          <EditModeControls
-            isEditMode={isEditMode}
-            onToggleEditMode={toggleEditMode}
-            onSavePositions={savePositions}
-            bathrooms={editableBathrooms}
-            selectedBathroom={selectedEditBathroom}
-            onSelectBathroom={setSelectedEditBathroom}
-          />
-        </div>
-      )}
 
       {/* Filters Panel - Removed from overlay, will be moved to parent component */}
 
@@ -671,14 +551,6 @@ ${editableBathrooms
 
         <CustomZoomControls />
 
-        <MapClickHandler
-          isEditMode={isEditMode}
-          onPositionUpdate={handlePositionUpdate}
-          bathrooms={editableBathrooms}
-          selectedBathroom={selectedEditBathroom}
-          onSelectBathroom={setSelectedEditBathroom}
-        />
-
         {/* User Location Marker */}
         {userLocation && (
           <>
@@ -725,10 +597,7 @@ ${editableBathrooms
             <Marker
               key={bathroom.id}
               position={bathroom.realCoords}
-              icon={createBathroomIcon(
-                bathroom.rating,
-                isEditMode && selectedEditBathroom === bathroom.id
-              )}
+              icon={createBathroomIcon(bathroom.rating)}
               title=""
               alt=""
               eventHandlers={{
@@ -840,7 +709,7 @@ ${editableBathrooms
       )}
 
       {/* Coachmark overlay to make it obvious to tap a pin */}
-      {showTouchHint && !isEditMode && !isModalOpen && (
+      {showTouchHint && !isModalOpen && (
         <div className="absolute inset-0 z-[1100] pointer-events-none">
           {/* dim background (no pointer events to keep map clickable) */}
           <div className="absolute inset-0 bg-black/30 pointer-events-none" />
@@ -868,41 +737,25 @@ ${editableBathrooms
       )}
 
       {/* Simplified Instructions / Hint (no counters) */}
-      {(isEditMode || showTouchHint) && (
+      {showTouchHint && (
         <div className="absolute bottom-2 left-2 right-2 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-lg px-2 py-1 text-[9px] leading-tight z-[800] border border-gray-200/30 dark:border-gray-700/30 shadow-md">
-          {isEditMode ? (
-            <div className="w-full text-center">
-              {selectedEditBathroom ? (
-                <span className="text-green-600 font-medium">
-                  🎯 Clique no mapa para reposicionar
-                </span>
-              ) : (
-                <span className="text-orange-600 font-medium">
-                  ✏️ Clique numa casa de banho
-                </span>
-              )}
-            </div>
-          ) : (
-            showTouchHint && (
-              <div className="w-full flex items-center justify-center">
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/50 shadow-sm"
-                  onClick={() => {
-                    try {
-                      localStorage.setItem("map_hint_v1", "1");
-                    } catch (_) {}
-                    setShowTouchHint(false);
-                  }}
-                  title="Dica"
-                >
-                  <span className="animate-pulse">👆</span>
-                  <span className="hidden sm:inline">Toque num pin</span>
-                  <span className="sm:hidden">Toque num pin</span>
-                </button>
-              </div>
-            )
-          )}
+          <div className="w-full flex items-center justify-center">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/50 shadow-sm"
+              onClick={() => {
+                try {
+                  localStorage.setItem("map_hint_v1", "1");
+                } catch (_) {}
+                setShowTouchHint(false);
+              }}
+              title="Dica"
+            >
+              <span className="animate-pulse">👆</span>
+              <span className="hidden sm:inline">Toque num pin</span>
+              <span className="sm:hidden">Toque num pin</span>
+            </button>
+          </div>
         </div>
       )}
     </div>
