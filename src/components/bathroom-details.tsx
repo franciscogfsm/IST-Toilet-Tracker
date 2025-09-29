@@ -87,6 +87,7 @@ export function BathroomDetails({
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const submissionInProgressRef = useRef(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
   const [editComment, setEditComment] = useState("");
   const [editReviewerName, setEditReviewerName] = useState("");
