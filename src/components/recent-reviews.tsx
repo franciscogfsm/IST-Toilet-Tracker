@@ -75,7 +75,7 @@ export const RecentReviews: React.FC<RecentReviewsProps> = ({
     // Use a simple heuristic: if window width is available and >= 640px (sm breakpoint), show fewer reviews
     const isDesktop = typeof window !== "undefined" && window.innerWidth >= 640;
     const maxReviews = isDesktop ? 2 : 5;
-    return reviews.slice(-maxReviews);
+    return reviews.slice(0, maxReviews);
   }, [reviews]);
 
   // helper to compute widths and to scroll to a given index
