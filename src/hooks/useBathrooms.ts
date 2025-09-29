@@ -22,27 +22,21 @@ export function useBathrooms() {
     selectedBathroomId: "",
   });
 
-  // Load bathrooms on mount
+  // Load bathrooms on mount - OPTIMIZED: Single API call instead of 5
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const [allBathrooms, uniqueBuildings, uniqueFloors, stats, recent] =
-          await Promise.all([
-            BathroomService.getAllBathrooms(),
-            BathroomService.getUniqueBuildings(),
-            BathroomService.getUniqueFloors(),
-            BathroomService.getStatistics(),
-            BathroomService.getRecentReviews(10),
-          ]);
+        // Single optimized API call that gets all data at once
+        const allData = await BathroomService.getAllDataOptimized();
 
-        setBathrooms(allBathrooms);
-        setBuildings(uniqueBuildings);
-        setFloors(uniqueFloors);
-        setStatistics(stats);
-        setRecentReviews(recent);
+        setBathrooms(allData.bathrooms);
+        setBuildings(allData.buildings);
+        setFloors(allData.floors);
+        setStatistics(allData.statistics);
+        setRecentReviews(allData.recentReviews);
       } catch (err) {
         console.error("Error loading bathrooms:", err);
         setError("Erro ao carregar dados dos banheiros");
@@ -97,13 +91,13 @@ export function useBathrooms() {
     try {
       await BathroomService.addReview(bathroomId, reviewData);
 
-      // Refresh bathrooms data and statistics to get updated stats
-      const [updatedBathrooms, updatedStats] = await Promise.all([
-        BathroomService.getAllBathrooms(),
-        BathroomService.getStatistics(),
-      ]);
-      setBathrooms(updatedBathrooms);
-      setStatistics(updatedStats);
+      // OPTIMIZED: Use single call instead of two separate API calls
+      // The addReview method already invalidates cache, so fresh data will be fetched
+      const allData = await BathroomService.getAllDataOptimized();
+
+      setBathrooms(allData.bathrooms);
+      setStatistics(allData.statistics);
+      setRecentReviews(allData.recentReviews);
     } catch (err) {
       console.error("Error adding review:", err);
       throw err;

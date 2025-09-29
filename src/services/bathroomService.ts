@@ -9,6 +9,176 @@ type Review = Database["public"]["Tables"]["reviews"]["Row"];
 type ReviewInsert = Database["public"]["Tables"]["reviews"]["Insert"];
 
 export class BathroomService {
+  // Cache for reducing API calls
+  private static _cache = {
+    bathrooms: null as any[] | null,
+    lastFetch: 0,
+    CACHE_DURATION: 5 * 60 * 1000, // 5 minutes
+  };
+
+  // Method to invalidate cache when data changes
+  static invalidateCache() {
+    this._cache.bathrooms = null;
+    this._cache.lastFetch = 0;
+  }
+
+  // Combined API call that gets all data in one request
+  static async getAllDataOptimized() {
+    const now = Date.now();
+
+    // Return cached data if still fresh
+    if (
+      this._cache.bathrooms &&
+      now - this._cache.lastFetch < this._cache.CACHE_DURATION
+    ) {
+      return this.processAllData(this._cache.bathrooms);
+    }
+
+    // Fetch fresh data
+    const { data: bathrooms, error: bathroomsError } = await supabase.from(
+      "bathrooms"
+    ).select(`
+        *,
+        reviews (*)
+      `);
+
+    if (bathroomsError) {
+      console.error("Error fetching bathrooms:", bathroomsError);
+      throw bathroomsError;
+    }
+
+    const { data: recentReviews, error: reviewsError } = await supabase
+      .from("reviews")
+      .select(
+        `
+        *,
+        bathrooms (
+          id,
+          name,
+          building,
+          floor
+        )
+      `
+      )
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (reviewsError) {
+      console.error("Error fetching recent reviews:", reviewsError);
+      throw reviewsError;
+    }
+
+    // Update cache
+    this._cache.bathrooms = bathrooms || [];
+    this._cache.lastFetch = now;
+
+    return this.processAllData(bathrooms || [], recentReviews || []);
+  }
+
+  // Helper method to get most common cleanliness
+  static getMostCommonCleanliness(reviews: any[]): string {
+    if (reviews.length === 0) return "N/A";
+
+    const cleanlinessCounts = reviews.reduce((acc, review) => {
+      const level = this.getCleanlinessLabel(review.cleanliness);
+      acc[level] = (acc[level] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const mostCommon = Object.entries(cleanlinessCounts).sort(
+      ([, a], [, b]) => (b as number) - (a as number)
+    )[0];
+    return mostCommon ? mostCommon[0] : "N/A";
+  }
+
+  // Process all data from bathrooms to derive everything else
+  static processAllData(bathrooms: any[], recentReviews: any[] = []) {
+    // Process bathrooms with calculated fields
+    const processedBathrooms = bathrooms.map((bathroom) => {
+      const reviews = bathroom.reviews || [];
+
+      if (reviews.length === 0) {
+        return {
+          ...bathroom,
+          rating: undefined,
+          review_count: 0,
+          cleanliness: undefined,
+          paper_supply: undefined,
+          paper_availability: undefined,
+          privacy: undefined,
+        };
+      }
+
+      // Calculate average rating
+      const avgRating =
+        reviews.reduce((sum: number, r: any) => sum + r.rating, 0) /
+        reviews.length;
+
+      const reviewCount = reviews.length;
+
+      // Calculate average cleanliness
+      const avgCleanliness =
+        reviews.reduce((sum: number, r: any) => sum + r.cleanliness, 0) /
+        reviews.length;
+      const cleanlinessLabel = this.getCleanlinessLabel(avgCleanliness);
+
+      // Calculate paper supply percentage
+      const paperAvailableCount = reviews.filter(
+        (r: any) => r.paper_available
+      ).length;
+      const paperSupplyPercentage =
+        (paperAvailableCount / reviews.length) * 100;
+      const paperSupplyLabel = this.getPaperSupplyLabel(paperSupplyPercentage);
+
+      // Calculate privacy average
+      const avgPrivacy =
+        reviews.reduce((sum: number, r: any) => sum + r.privacy, 0) /
+        reviews.length;
+
+      return {
+        ...bathroom,
+        rating: Math.round(avgRating * 10) / 10,
+        review_count: reviewCount,
+        cleanliness: cleanlinessLabel,
+        paper_supply: paperSupplyLabel,
+        paper_availability: paperSupplyPercentage,
+        privacy: Math.round(avgPrivacy * 10) / 10,
+      };
+    });
+
+    // Sort by rating
+    const sortedBathrooms = processedBathrooms.sort((a, b) => {
+      if (a.rating === undefined && b.rating === undefined) return 0;
+      if (a.rating === undefined) return 1;
+      if (b.rating === undefined) return -1;
+      return b.rating - a.rating;
+    });
+
+    // Derive unique buildings and floors
+    const buildings = [...new Set(bathrooms.map((b) => b.building))].sort();
+    const floors = [...new Set(bathrooms.map((b) => b.floor))].sort();
+
+    // Calculate statistics
+    const allReviews = bathrooms.flatMap((b) => b.reviews || []);
+    const stats = {
+      totalReviews: allReviews.length,
+      avgRating:
+        allReviews.length > 0
+          ? allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length
+          : 0,
+      buildingsCount: buildings.length,
+      mostCommonCleanliness: this.getMostCommonCleanliness(allReviews),
+    };
+
+    return {
+      bathrooms: sortedBathrooms,
+      buildings,
+      floors,
+      statistics: stats,
+      recentReviews,
+    };
+  }
+
   static async getAllBathrooms() {
     const { data, error } = await supabase.from("bathrooms").select(
       `
@@ -429,6 +599,9 @@ export class BathroomService {
     if (data?.id) {
       DeviceFingerprint.markOwnReview(data.id);
     }
+
+    // Invalidate cache since data has changed
+    this.invalidateCache();
 
     // Não precisamos mais atualizar estatísticas estáticas - elas são calculadas dinamicamente
   }
