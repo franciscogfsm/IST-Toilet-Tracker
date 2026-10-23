@@ -1,12 +1,32 @@
+<div align="center">
+
 # IST Toilet Tracker
+
+Find and review the bathrooms at Instituto Superior Técnico.
+
+<img src="https://img.shields.io/badge/React-61DAFB?style=flat&logo=react&logoColor=black" alt="React">
+<img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white" alt="TypeScript">
+<img src="https://img.shields.io/badge/Supabase-3FCF8E?style=flat&logo=supabase&logoColor=white" alt="Supabase">
+<img src="https://img.shields.io/badge/Leaflet-199900?style=flat&logo=leaflet&logoColor=white" alt="Leaflet">
+<img src="https://img.shields.io/badge/TanStack-FF4154?style=flat&logo=reactquery&logoColor=white" alt="TanStack">
+<img src="https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=flat&logo=tailwindcss&logoColor=white" alt="Tailwind CSS">
+<img src="https://img.shields.io/badge/Vite-646CFF?style=flat&logo=vite&logoColor=white" alt="Vite">
+
+<sub>
+<a href="CONTRIBUTING.md">Contributing</a>
+</sub>
+
+</div>
+
+<br>
 
 A modern, accessible web application for finding and reviewing bathrooms at Instituto Superior Técnico (IST). Built with React, TypeScript, and modern web technologies.
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 This project follows a **feature-based architecture** designed for scalability and easy contribution. The codebase is organized into logical features that can be developed independently.
 
-### 📁 Project Structure
+### Project Structure
 
 ```
 src/
@@ -26,7 +46,7 @@ src/
 └── data/               # Static data files
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -58,7 +78,7 @@ npm run build
 - `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint
 
-## 🛠️ Development Guidelines
+## Development Guidelines
 
 ### Code Organization
 
@@ -93,7 +113,7 @@ touch src/features/new-feature/services/
 - **Accessibility**: Use semantic HTML and ARIA attributes
 
 ```typescript
-// ✅ Good: Focused component with clear interface
+//  Good: Focused component with clear interface
 interface BathroomCardProps {
   bathroom: Bathroom;
   onSelect?: (bathroom: Bathroom) => void;
@@ -243,7 +263,7 @@ npm run lint:fix
 - Use proper key props in lists
 - Debounce search inputs
 
-## 📋 Contributing
+## Contributing
 
 ### How to Contribute
 
@@ -270,7 +290,7 @@ npm run lint:fix
 3. **Approval**: PR is approved and merged
 4. **Deployment**: Changes are automatically deployed
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -289,7 +309,7 @@ The build configuration is in `vite.config.ts`. Key optimizations include:
 - **Minification**: Terser for production builds
 - **Asset optimization**: Image compression and optimization
 
-## 📚 API Documentation
+## API Documentation
 
 ### Bathroom Service
 
@@ -329,7 +349,7 @@ const locationState = await locationService.requestLocation();
 const distance = locationService.calculateDistance(lat1, lng1, lat2, lng2);
 ```
 
-## 🚨 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -343,11 +363,11 @@ const distance = locationService.calculateDistance(lat1, lng1, lat2, lng2);
 - **Discussions**: Use GitHub Discussions for questions
 - **Documentation**: Check this README and inline code comments
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - IST community for feedback and contributions
 - React and TypeScript communities for excellent tools
@@ -355,4 +375,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Happy coding! 🎉**
+**Happy coding! **
